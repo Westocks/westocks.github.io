@@ -16,13 +16,20 @@
             padding: 7px;
             font-size: 16px;
         }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
 <h1>WESTOCKS</h1>
 
-<button id="myBtn" onclick="askAmount()">Click me</button>
+<button class="button" id="myBtn" onclick="askAmount()">Click me</button>
+<button class="button" onclick="showHelp()">Help</button>
 
 <br><br>
 
@@ -37,10 +44,12 @@
 <script>
 function askAmount() {
     document.getElementById("myBtn").innerText = "How much do you want to invest?";
-    
-    // Show input + currency options
     document.getElementById("amountInput").style.display = "inline-block";
     document.getElementById("currencySelect").style.display = "inline-block";
+}
+
+function showHelp() {
+    alert("Westocks is an investing business. This website is made to help investors invest in us. Then we use your money and invest it, giving your money back and more.");
 }
 </script>
 
