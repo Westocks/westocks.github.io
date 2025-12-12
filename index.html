@@ -1,14 +1,17 @@
+<!DOCTYPE html>
 <html>
 <head>
-    <title>Button Test</title>
+    <title>Investment Prompt</title>
 </head>
 <body>
 
-<button id="myBtn" onclick="changeText()">Invest?</button>
+<button id="myBtn" onclick="askAmount()">Click me</button>
+<input type="number" id="amountInput" style="display:none;" placeholder="Enter amount">
 
 <script>
-function changeText() {
-    document.getElementById("myBtn").innerText = "Yayyayyayay";
+function askAmount() {
+    document.getElementById("myBtn").innerText = "How much do you want to invest?";
+    document.getElementById("amountInput").style.display = "inline-block";
 }
 </script>
 
