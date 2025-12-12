@@ -7,20 +7,46 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
+            color: white;
+
+            /* Animated gradient background */
+            background: linear-gradient(270deg, #1e3c72, #2a5298, #0f2027);
+            background-size: 600% 600%;
+            animation: gradientAnimation 15s ease infinite;
         }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
         h1 {
             margin-bottom: 40px;
+            font-size: 40px;
+            letter-spacing: 3px;
         }
+
         #amountInput, #currencySelect {
             margin-top: 10px;
             padding: 7px;
             font-size: 16px;
         }
+
         .button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
             cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .button:hover {
+            background-color: #e2e2e2;
         }
     </style>
 </head>
@@ -28,7 +54,7 @@
 
 <h1>WESTOCKS</h1>
 
-<button class="button" id="myBtn" onclick="askAmount()">Invest</button>
+<button class="button" id="myBtn" onclick="askAmount()">Click me</button>
 <button class="button" onclick="showHelp()">Help</button>
 
 <br><br>
@@ -52,6 +78,3 @@ function showHelp() {
     alert("Westocks is an investing business. This website is made to help investors invest in us. Then we use your money and invest it, giving your money back and more.");
 }
 </script>
-
-</body>
-</html>
