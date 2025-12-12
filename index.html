@@ -1,17 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Investment Prompt</title>
+    <title>WESTOCKS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        h1 {
+            margin-bottom: 40px;
+        }
+        #amountInput, #currencySelect {
+            margin-top: 10px;
+            padding: 7px;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
 
+<h1>WESTOCKS</h1>
+
 <button id="myBtn" onclick="askAmount()">Click me</button>
+
+<br><br>
+
 <input type="number" id="amountInput" style="display:none;" placeholder="Enter amount">
+
+<select id="currencySelect" style="display:none;">
+    <option value="USD">$ USD</option>
+    <option value="EUR">€ EUR</option>
+    <option value="GBP">£ GBP</option>
+</select>
 
 <script>
 function askAmount() {
     document.getElementById("myBtn").innerText = "How much do you want to invest?";
+    
+    // Show input + currency options
     document.getElementById("amountInput").style.display = "inline-block";
+    document.getElementById("currencySelect").style.display = "inline-block";
 }
 </script>
 
