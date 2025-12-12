@@ -1,3 +1,12 @@
 import tkinter as tk
-r = tk.Tk()
-btn = tk.Button(r, text='test')
+
+def change_text():
+    button.config(text="Test")
+
+root = tk.Tk()
+root.title("Button Demo")
+
+button = tk.Button(root, text="Click me", command=change_text)
+button.pack(pady=20)
+
+root.mainloop()
