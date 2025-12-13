@@ -1,44 +1,46 @@
 <script>
 /* ===== MARKET DATA ===== */
 const DEFAULT_MARKET = {
-  lastUpdate: Date.now(),
   stocks: {
-    AAPL: { name: "Apple Inc.", price: 180.00, history: [] },
-    MSFT: { name: "Microsoft", price: 330.00, history: [] },
-    GOOGL:{ name: "Alphabet (Google)", price: 140.00, history: [] },
-    AMZN: { name: "Amazon", price: 155.00, history: [] },
-    TSLA: { name: "Tesla", price: 240.00, history: [] },
-    META: { name: "Meta Platforms", price: 310.00, history: [] },
-    NVDA: { name: "NVIDIA", price: 480.00, history: [] }
+    AAPL: { name: "Apple Inc.", price: 180, history: [] },
+    MSFT: { name: "Microsoft", price: 330, history: [] },
+    GOOGL:{ name: "Alphabet", price: 140, history: [] },
+    AMZN: { name: "Amazon", price: 155, history: [] },
+    TSLA: { name: "Tesla", price: 240, history: [] },
+    META: { name: "Meta", price: 310, history: [] },
+    NVDA: { name: "NVIDIA", price: 480, history: [] }
   }
 };
 
 let market = JSON.parse(localStorage.getItem("market")) || DEFAULT_MARKET;
-let portfolio = JSON.parse(localStorage.getItem("portfolio")) || { cashUSD: 1000, holdings:{} };
+let portfolio = JSON.parse(localStorage.getItem("portfolio")) || { cashUSD: 1000, holdings: {} };
 
 /* ===== HELPERS ===== */
-function fmtUSD(n){return "$"+n.toFixed(2)}
+const fmtUSD = n => "$" + n.toFixed(2);
 
 /* ===== PRICE UPDATE ===== */
 function randomWalkPrices(){
-  for(const [sym,info] of Object.entries(market.stocks)){
-    const vol={TSLA:.08,NVDA:.07,META:.06,AAPL:.04,MSFT:.035,GOOGL:.04,AMZN:.05}[sym]||.04;
-    const change=(Math.random()-0.5)*vol;
-    info.price=Math.max(1,Number((info.price*(1+change)).toFixed(2)));
-    info.history.push(info.price);
-    if(info.history.length>60) info.history.shift();
+  for(const s in market.stocks){
+    const stock = market.stocks[s];
+    const change = (Math.random() - 0.5) * 0.06;
+    stock.price = Math.max(1, +(stock.price * (1 + change)).toFixed(2));
+    stock.history.push(stock.price);
+    if(stock.history.length > 40) stock.history.shift();
   }
   saveState();
 }
 
 /* ===== RENDER MARKET ===== */
 function renderMarket(){
-  const list=document.getElementById("marketList");
-  list.innerHTML="";
-  for(const [sym,info] of Object.entries(market.stocks)){
-    const div=document.createElement("div");
-    div.className="stock";
-    div.innerHTML=`
+  const list = document.getElementById("marketList");
+  list.innerHTML = "";
+
+  for(const sym in market.stocks){
+    const info = market.stocks[sym];
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "stock";
+    wrapper.innerHTML = `
       <div>
         <strong>${sym}</strong>
         <div class="small">${info.name}</div>
@@ -50,15 +52,19 @@ function renderMarket(){
         <button class="btn btn-ghost" onclick="toggleGraph('${sym}')">Graph</button>
       </div>
     `;
-    list.appendChild(div);
 
-    const canvas=document.createElement("canvas");
-    canvas.id=`graph-${sym}`;
-    canvas.width=300;
-    canvas.height=80;
-    canvas.style.display="none";
-    canvas.style.marginTop="6px";
-    list.appendChild(canvas);
+    const canvas = document.createElement("canvas");
+    canvas.id = `graph-${sym}`;
+    canvas.width = 320;
+    canvas.height = 80;
+    canvas.style.display = "none";
+    canvas.style.marginTop = "6px";
+
+    const container = document.createElement("div");
+    container.appendChild(wrapper);
+    container.appendChild(canvas);
+
+    list.appendChild(container);
 
     drawGraph(sym);
   }
@@ -66,70 +72,86 @@ function renderMarket(){
 
 /* ===== GRAPH ===== */
 function toggleGraph(sym){
-  const c=document.getElementById(`graph-${sym}`);
-  c.style.display=c.style.display==="none"?"block":"none";
+  const c = document.getElementById(`graph-${sym}`);
+  if (!c) return;
+  c.style.display = c.style.display === "none" ? "block" : "none";
 }
 
 function drawGraph(sym){
-  const c=document.getElementById(`graph-${sym}`);
+  const c = document.getElementById(`graph-${sym}`);
   if(!c) return;
-  const ctx=c.getContext("2d");
-  const data=market.stocks[sym].history;
-  ctx.clearRect(0,0,c.width,c.height);
-  if(data.length<2) return;
+  const data = market.stocks[sym].history;
+  if(data.length < 2) return;
 
-  const min=Math.min(...data);
-  const max=Math.max(...data);
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+
   ctx.beginPath();
-  ctx.strokeStyle="white";
+  ctx.strokeStyle = "white";
+
   data.forEach((p,i)=>{
-    const x=i/(data.length-1)*c.width;
-    const y=c.height-((p-min)/(max-min+0.001))*c.height;
-    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    const x = i/(data.length-1) * c.width;
+    const y = c.height - ((p-min)/(max-min+0.01)) * c.height;
+    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
   });
+
   ctx.stroke();
 }
 
 /* ===== PORTFOLIO ===== */
 function renderPortfolio(){
-  const el=document.getElementById("portfolioList");
-  el.innerHTML="";
-  for(const [sym,qty] of Object.entries(portfolio.holdings)){
-    const value=qty*market.stocks[sym].price;
-    el.innerHTML+=`<div>${sym}: ${qty.toFixed(3)} (${fmtUSD(value)})</div>`;
+  const el = document.getElementById("portfolioList");
+  el.innerHTML = "";
+
+  for(const sym in portfolio.holdings){
+    const qty = portfolio.holdings[sym];
+    const value = qty * market.stocks[sym].price;
+    el.innerHTML += `<div>${sym}: ${qty.toFixed(3)} (${fmtUSD(value)})</div>`;
   }
+
   if(!Object.keys(portfolio.holdings).length)
-    el.innerHTML="<div class='small'>No holdings</div>";
-  document.getElementById("cashBal").innerText=fmtUSD(portfolio.cashUSD);
+    el.innerHTML = "<div class='small'>No holdings</div>";
+
+  document.getElementById("cashBal").innerText = fmtUSD(portfolio.cashUSD);
 }
 
 /* ===== BUY / SELL ===== */
 function buy(sym){
-  const amount=parseFloat(prompt("How much USD do you want to invest?"));
-  if(isNaN(amount)||amount<=0) return;
-  const price=market.stocks[sym].price;
-  const shares=amount/price;
-  portfolio.cashUSD-=amount;
-  portfolio.holdings[sym]=(portfolio.holdings[sym]||0)+shares;
+  const amount = parseFloat(prompt("How much USD do you want to buy?"));
+  if(isNaN(amount) || amount <= 0) return;
+
+  const price = market.stocks[sym].price;
+  const shares = amount / price;
+
+  portfolio.cashUSD -= amount; // negatives allowed
+  portfolio.holdings[sym] = (portfolio.holdings[sym] || 0) + shares;
+
   saveState();
 }
 
 function sell(sym){
   if(!portfolio.holdings[sym]) return;
-  const amount=parseFloat(prompt("How much USD do you want to sell?"));
-  if(isNaN(amount)||amount<=0) return;
-  const price=market.stocks[sym].price;
-  const shares=amount/price;
-  portfolio.holdings[sym]-=shares;
-  portfolio.cashUSD+=amount;
-  if(portfolio.holdings[sym]<=0) delete portfolio.holdings[sym];
+
+  const amount = parseFloat(prompt("How much USD do you want to sell?"));
+  if(isNaN(amount) || amount <= 0) return;
+
+  const price = market.stocks[sym].price;
+  const shares = amount / price;
+
+  portfolio.holdings[sym] -= shares;
+  portfolio.cashUSD += amount;
+
+  if(portfolio.holdings[sym] <= 0) delete portfolio.holdings[sym];
   saveState();
 }
 
 /* ===== SAVE ===== */
 function saveState(){
-  localStorage.setItem("market",JSON.stringify(market));
-  localStorage.setItem("portfolio",JSON.stringify(portfolio));
+  localStorage.setItem("market", JSON.stringify(market));
+  localStorage.setItem("portfolio", JSON.stringify(portfolio));
   renderMarket();
   renderPortfolio();
 }
@@ -137,5 +159,6 @@ function saveState(){
 /* ===== START ===== */
 renderMarket();
 renderPortfolio();
-setInterval(randomWalkPrices,4000);
+setInterval(randomWalkPrices, 4000);
 </script>
+
