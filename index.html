@@ -1,123 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>WESTOCKS Demo</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-html,body{
-  margin:0;height:100%;overflow:hidden;
-  font-family:Arial,sans-serif;color:white
-}
-body{
-  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
-  background-size:600% 600%;
-  animation:bgMove 18s ease infinite;
-}
-@keyframes bgMove{
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
-
-canvas#stars{
-  position:fixed;inset:0;z-index:0
-}
-
-.app{
-  position:relative;z-index:1;
-  height:100%;display:flex;
-  justify-content:center;align-items:center
-}
-
-.panel{
-  background:rgba(0,0,0,.45);
-  border-radius:16px;
-  padding:30px;
-  width:950px;
-  max-height:90%;
-  overflow:auto;
-  box-shadow:0 0 40px rgba(0,0,0,.6)
-}
-
-h1{text-align:center;letter-spacing:3px}
-.small{opacity:.8;font-size:13px}
-
-button{
-  padding:8px 14px;
-  border:none;border-radius:8px;
-  font-weight:bold;cursor:pointer
-}
-.start-btn{
-  background:white;color:#061124;
-  font-size:16px
-}
-.stock{
-  background:rgba(255,255,255,.08);
-  border-radius:12px;
-  padding:14px;margin-top:14px
-}
-.stock-header{
-  display:flex;justify-content:space-between;align-items:center
-}
-.stock-price{font-weight:800}
-.toggle{background:rgba(255,255,255,.15);color:white}
-.trade{background:white;color:black}
-
-canvas.graph{
-  width:100%;height:120px;
-  margin-top:10px;
-  display:none
-}
-</style>
-</head>
-
-<body>
-<canvas id="stars"></canvas>
-
-<div class="app">
-  <div class="panel">
-
-    <!-- START -->
-    <div id="start">
-      <h1>WESTOCKS</h1>
-      <p class="small" style="text-align:center">
-        Demo only — no real money involved
-      </p>
-      <div style="text-align:center;margin-top:30px">
-        <button class="start-btn" onclick="startDemo()">
-          Start investing (Demo) – THIS IS NOT WITH REAL MONEY
-        </button>
-      </div>
-    </div>
-
-    <!-- MARKET -->
-    <div id="market" style="display:none">
-      <h1>Imaginary Market</h1>
-      <div class="small">
-        Cash balance: <strong>$<span id="cash">1000.00</span></strong>
-      </div>
-      <div id="stocks"></div>
-    </div>
-
-  </div>
-</div>
-
 <script>
 /* ===== STAR BACKGROUND ===== */
 const sc=document.getElementById("stars");
 const sctx=sc.getContext("2d");
 function resize(){sc.width=innerWidth;sc.height=innerHeight}
 resize();addEventListener("resize",resize);
-const stars=[...Array(200)].map(()=>({
-  x:Math.random()*sc.width,y:Math.random()*sc.height,
-  r:Math.random()*1.4+.3,v:Math.random()*.4+.1
+
+const stars=[...Array(180)].map(()=>({
+  x:Math.random()*sc.width,
+  y:Math.random()*sc.height,
+  r:Math.random()*1.5+.3,
+  v:Math.random()*.4+.1
 }));
+
 (function animStars(){
   sctx.clearRect(0,0,sc.width,sc.height);
   stars.forEach(s=>{
-    s.y+=s.v;if(s.y>sc.height)s.y=0;
+    s.y+=s.v;
+    if(s.y>sc.height)s.y=0;
     sctx.globalAlpha=Math.random();
     sctx.beginPath();
     sctx.arc(s.x,s.y,s.r,0,Math.PI*2);
@@ -145,34 +44,34 @@ function startDemo(){
 /* ===== PRICE MOVEMENT ===== */
 function updatePrices(){
   for(const s in stocks){
+    const st=stocks[s];
     const change=(Math.random()-.5)*0.08;
-    stocks[s].price=Math.max(5,+(stocks[s].price*(1+change)).toFixed(2));
-    stocks[s].history.push(stocks[s].price);
-    if(stocks[s].history.length>60)stocks[s].history.shift();
+    st.price=Math.max(5,+(st.price*(1+change)).toFixed(2));
+    st.history.push(st.price);
+    if(st.history.length>80)st.history.shift();
   }
   render();
 }
 setInterval(updatePrices,3000);
 
-/* ===== TRADING ===== */
+/* ===== BUY / SELL ===== */
 function buy(sym){
-  const amt=parseFloat(prompt("How much USD do you want to buy?"));
-  if(isNaN(amt)||amt<=0)return;
+  const usd=parseFloat(prompt("How much USD do you want to buy?"));
+  if(isNaN(usd)||usd<=0)return;
   const st=stocks[sym];
-  const qty=amt/st.price;
-  cash-=amt; // demo allows negative
-  st.shares+=qty;
+  const shares=usd/st.price;
+  cash-=usd;
+  st.shares+=shares;
   render();
 }
 
 function sell(sym){
-  const amt=parseFloat(prompt("How much USD do you want to sell?"));
-  if(isNaN(amt)||amt<=0)return;
   const st=stocks[sym];
-  const qty=amt/st.price;
-  if(qty>st.shares)return alert("Not enough shares");
+  const qty=parseFloat(prompt("How many shares do you want to sell?"));
+  if(isNaN(qty)||qty<=0)return;
+  if(qty>st.shares)return alert("You don't have that many shares");
   st.shares-=qty;
-  cash+=amt;
+  cash+=qty*st.price;
   render();
 }
 
@@ -180,14 +79,19 @@ function sell(sym){
 function toggleGraph(sym){
   const c=document.getElementById("g-"+sym);
   c.style.display=c.style.display==="none"?"block":"none";
+  if(c.style.display==="block") drawGraph(sym);
 }
+
 function drawGraph(sym){
   const c=document.getElementById("g-"+sym);
   const ctx=c.getContext("2d");
   const data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
   if(data.length<2)return;
-  const min=Math.min(...data),max=Math.max(...data);
+
+  const min=Math.min(...data);
+  const max=Math.max(...data);
+
   ctx.strokeStyle="white";
   ctx.beginPath();
   data.forEach((p,i)=>{
@@ -224,10 +128,6 @@ function render(){
       <canvas class="graph" id="g-${s}" width="800" height="120"></canvas>
     `;
     wrap.appendChild(div);
-    drawGraph(s);
   }
 }
 </script>
-</body>
-</html>
-
