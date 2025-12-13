@@ -1,76 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>WESTOCKS</title>
-
-<style>
-html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;overflow:hidden}
-body{
-color:white;display:flex;justify-content:center;align-items:flex-start;
-background:linear-gradient(270deg,#0f172a,#022b3a,#0f172a);
-background-size:600% 600%;animation:gradientAnimation 18s ease infinite}
-@keyframes gradientAnimation{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-
-.app{width:1100px;height:700px;display:grid;grid-template-columns:1fr 360px;gap:20px;padding:24px;box-sizing:border-box}
-.main,.side{
-background:rgba(255,255,255,.04);border-radius:14px;
-box-shadow:0 6px 30px rgba(0,0,0,.45);overflow:auto}
-.main{padding:28px}
-.side{padding:16px}
-
-h1{font-size:34px;letter-spacing:3px}
-.small{font-size:13px;opacity:.85}
-
-.market-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
-.stock{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,.05)}
-
-.btn{padding:10px 16px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
-.btn-primary{background:white;color:#061124}
-.btn-ghost{background:rgba(255,255,255,.06);color:white}
-
-footer{font-size:12px;opacity:.7;margin-top:16px}
-</style>
-</head>
-
-<body>
-
-<div class="app">
-  <div class="main">
-    <h1>WESTOCKS</h1>
-    <p class="small">Mini stock market demo (random prices)</p>
-
-    <div class="portfolio">
-      <h3>Portfolio</h3>
-      <div id="portfolioList" class="small">Loading...</div>
-      <div style="margin-top:8px;font-weight:700">Cash: <span id="cashBal">$0.00</span></div>
-    </div>
-
-    <footer>
-      Demo only — no real money or real stock data.
-    </footer>
-  </div>
-
-  <aside class="side">
-    <h3>Stock Market</h3>
-    <div class="small">Prices update every few seconds</div>
-    <div id="marketList" class="market-list"></div>
-  </aside>
-</div>
-
 <script>
 /* ===== MARKET DATA ===== */
 const DEFAULT_MARKET = {
   lastUpdate: Date.now(),
   stocks: {
-    AAPL: { name: "Apple Inc.", price: 180.00 },
-    MSFT: { name: "Microsoft", price: 330.00 },
-    GOOGL:{ name: "Alphabet (Google)", price: 140.00 },
-    AMZN: { name: "Amazon", price: 155.00 },
-    TSLA: { name: "Tesla", price: 240.00 },
-    META: { name: "Meta Platforms", price: 310.00 },
-    NVDA: { name: "NVIDIA", price: 480.00 }
+    AAPL: { name: "Apple Inc.", price: 180.00, history: [] },
+    MSFT: { name: "Microsoft", price: 330.00, history: [] },
+    GOOGL:{ name: "Alphabet (Google)", price: 140.00, history: [] },
+    AMZN: { name: "Amazon", price: 155.00, history: [] },
+    TSLA: { name: "Tesla", price: 240.00, history: [] },
+    META: { name: "Meta Platforms", price: 310.00, history: [] },
+    NVDA: { name: "NVIDIA", price: 480.00, history: [] }
   }
 };
 
@@ -80,23 +19,19 @@ let portfolio = JSON.parse(localStorage.getItem("portfolio")) || { cashUSD: 1000
 /* ===== HELPERS ===== */
 function fmtUSD(n){return "$"+n.toFixed(2)}
 
+/* ===== PRICE UPDATE ===== */
 function randomWalkPrices(){
   for(const [sym,info] of Object.entries(market.stocks)){
-    const volatility={
-      TSLA:0.08,NVDA:0.07,META:0.06,
-      AAPL:0.04,MSFT:0.035,GOOGL:0.04,AMZN:0.05
-    }[sym]||0.04;
-
-    const change=(Math.random()-0.5)*volatility;
-    let newPrice=info.price*(1+change);
-    newPrice=Math.max(newPrice,info.price*0.7);
-    info.price=Number(newPrice.toFixed(2));
+    const vol={TSLA:.08,NVDA:.07,META:.06,AAPL:.04,MSFT:.035,GOOGL:.04,AMZN:.05}[sym]||.04;
+    const change=(Math.random()-0.5)*vol;
+    info.price=Math.max(1,Number((info.price*(1+change)).toFixed(2)));
+    info.history.push(info.price);
+    if(info.history.length>60) info.history.shift();
   }
-  market.lastUpdate=Date.now();
   saveState();
 }
 
-/* ===== RENDER ===== */
+/* ===== RENDER MARKET ===== */
 function renderMarket(){
   const list=document.getElementById("marketList");
   list.innerHTML="";
@@ -112,17 +47,56 @@ function renderMarket(){
         <div style="font-weight:800">${fmtUSD(info.price)}</div>
         <button class="btn btn-ghost" onclick="buy('${sym}')">Buy</button>
         <button class="btn btn-ghost" onclick="sell('${sym}')">Sell</button>
-      </div>`;
+        <button class="btn btn-ghost" onclick="toggleGraph('${sym}')">Graph</button>
+      </div>
+    `;
     list.appendChild(div);
+
+    const canvas=document.createElement("canvas");
+    canvas.id=`graph-${sym}`;
+    canvas.width=300;
+    canvas.height=80;
+    canvas.style.display="none";
+    canvas.style.marginTop="6px";
+    list.appendChild(canvas);
+
+    drawGraph(sym);
   }
 }
 
+/* ===== GRAPH ===== */
+function toggleGraph(sym){
+  const c=document.getElementById(`graph-${sym}`);
+  c.style.display=c.style.display==="none"?"block":"none";
+}
+
+function drawGraph(sym){
+  const c=document.getElementById(`graph-${sym}`);
+  if(!c) return;
+  const ctx=c.getContext("2d");
+  const data=market.stocks[sym].history;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(data.length<2) return;
+
+  const min=Math.min(...data);
+  const max=Math.max(...data);
+  ctx.beginPath();
+  ctx.strokeStyle="white";
+  data.forEach((p,i)=>{
+    const x=i/(data.length-1)*c.width;
+    const y=c.height-((p-min)/(max-min+0.001))*c.height;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+}
+
+/* ===== PORTFOLIO ===== */
 function renderPortfolio(){
   const el=document.getElementById("portfolioList");
   el.innerHTML="";
   for(const [sym,qty] of Object.entries(portfolio.holdings)){
     const value=qty*market.stocks[sym].price;
-    el.innerHTML+=`<div>${sym}: ${qty.toFixed(2)} (${fmtUSD(value)})</div>`;
+    el.innerHTML+=`<div>${sym}: ${qty.toFixed(3)} (${fmtUSD(value)})</div>`;
   }
   if(!Object.keys(portfolio.holdings).length)
     el.innerHTML="<div class='small'>No holdings</div>";
@@ -131,18 +105,24 @@ function renderPortfolio(){
 
 /* ===== BUY / SELL ===== */
 function buy(sym){
+  const amount=parseFloat(prompt("How much USD do you want to invest?"));
+  if(isNaN(amount)||amount<=0) return;
   const price=market.stocks[sym].price;
-  const shares=100/price;
-  portfolio.cashUSD-=100;
+  const shares=amount/price;
+  portfolio.cashUSD-=amount;
   portfolio.holdings[sym]=(portfolio.holdings[sym]||0)+shares;
   saveState();
 }
 
 function sell(sym){
-  if(!portfolio.holdings[sym])return;
-  const value=portfolio.holdings[sym]*market.stocks[sym].price;
-  portfolio.cashUSD+=value;
-  delete portfolio.holdings[sym];
+  if(!portfolio.holdings[sym]) return;
+  const amount=parseFloat(prompt("How much USD do you want to sell?"));
+  if(isNaN(amount)||amount<=0) return;
+  const price=market.stocks[sym].price;
+  const shares=amount/price;
+  portfolio.holdings[sym]-=shares;
+  portfolio.cashUSD+=amount;
+  if(portfolio.holdings[sym]<=0) delete portfolio.holdings[sym];
   saveState();
 }
 
@@ -159,6 +139,3 @@ renderMarket();
 renderPortfolio();
 setInterval(randomWalkPrices,4000);
 </script>
-
-</body>
-</html>
