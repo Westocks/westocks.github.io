@@ -91,21 +91,30 @@ canvas.graph{
 
     <h1>WESTOCKS</h1>
 
+    <!-- START -->
     <div id="start">
       <p class="small" style="text-align:center">
-        Demo only — this is NOT real money
+        Demo only — NOT real money
       </p>
       <div style="text-align:center;margin-top:30px">
         <button class="start-btn" onclick="startDemo()">
-          Start investing (Demo) – THIS IS NOT WITH REAL MONEY
+          Start investing (Demo)
         </button>
       </div>
     </div>
 
+    <!-- MARKET -->
     <div id="market" style="display:none">
       <div class="small">
-        Cash balance: $<span id="cash">1000.00</span>
+        Cash: $<span id="cash">1000.00</span>
       </div>
+
+      <div style="margin:12px 0">
+        <button class="toggle" onclick="toggleAllGraphs()">
+          Toggle All Graphs
+        </button>
+      </div>
+
       <div id="stocks"></div>
     </div>
 
@@ -118,11 +127,11 @@ const sc=document.getElementById("stars");
 const sctx=sc.getContext("2d");
 
 function resize(){
-  sc.width=window.innerWidth;
-  sc.height=window.innerHeight;
+  sc.width=innerWidth;
+  sc.height=innerHeight;
 }
 resize();
-window.addEventListener("resize",resize);
+addEventListener("resize",resize);
 
 const stars=[];
 for(let i=0;i<180;i++){
@@ -134,7 +143,7 @@ for(let i=0;i<180;i++){
   });
 }
 
-function animateStars(){
+(function animateStars(){
   sctx.clearRect(0,0,sc.width,sc.height);
   for(const s of stars){
     s.y+=s.v;
@@ -146,11 +155,12 @@ function animateStars(){
     sctx.fill();
   }
   requestAnimationFrame(animateStars);
-}
-animateStars();
+})();
 
 /* ===== DATA ===== */
 let cash=1000;
+let allGraphsVisible=false;
+
 const stocks={
   NOVA:{name:"Nova Dynamics",price:120,shares:0,history:[120]},
   ORBX:{name:"Orbex Labs",price:75,shares:0,history:[75]},
@@ -192,27 +202,32 @@ function sell(sym){
   const st=stocks[sym];
   const qty=parseFloat(prompt("How many shares do you want to sell?"));
   if(isNaN(qty)||qty<=0)return;
-  if(qty>st.shares){
-    alert("You don't have that many shares");
-    return;
-  }
+  if(qty>st.shares)return alert("Not enough shares");
   st.shares-=qty;
   cash+=qty*st.price;
   render();
 }
 
-/* ===== GRAPH ===== */
+/* ===== GRAPHS ===== */
 function toggleGraph(sym){
   const c=document.getElementById("g-"+sym);
-  c.style.display=(c.style.display==="none")?"block":"none";
+  c.style.display=c.style.display==="none"?"block":"none";
   if(c.style.display==="block") drawGraph(sym);
+}
+
+function toggleAllGraphs(){
+  allGraphsVisible=!allGraphsVisible;
+  for(const sym in stocks){
+    const c=document.getElementById("g-"+sym);
+    c.style.display=allGraphsVisible?"block":"none";
+    if(allGraphsVisible) drawGraph(sym);
+  }
 }
 
 function drawGraph(sym){
   const c=document.getElementById("g-"+sym);
   const ctx=c.getContext("2d");
   const data=stocks[sym].history;
-
   ctx.clearRect(0,0,c.width,c.height);
   if(data.length<2)return;
 
@@ -221,12 +236,11 @@ function drawGraph(sym){
 
   ctx.strokeStyle="white";
   ctx.beginPath();
-  for(let i=0;i<data.length;i++){
+  data.forEach((p,i)=>{
     const x=i/(data.length-1)*c.width;
-    const y=c.height-(data[i]-min)/(max-min+0.01)*c.height;
-    if(i===0)ctx.moveTo(x,y);
-    else ctx.lineTo(x,y);
-  }
+    const y=c.height-(p-min)/(max-min+0.01)*c.height;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
   ctx.stroke();
 }
 
@@ -256,6 +270,7 @@ function render(){
       <canvas class="graph" id="g-${sym}" width="800" height="120"></canvas>
     `;
     wrap.appendChild(div);
+    if(allGraphsVisible) drawGraph(sym);
   }
 }
 </script>
