@@ -1,602 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>WESTOCKS</title>
+<meta charset="UTF-8">
+<title>WESTOCKS Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-  html,body { height:100%; margin:0; font-family:Inter, Arial, sans-serif; overflow:hidden; }
-  body {
-    color:white;
-    display:flex;
-    align-items:flex-start;
-    justify-content:center;
-    background: linear-gradient(270deg,#0f172a,#022b3a,#0f172a);
-    background-size:600% 600%;
-    animation: gradientAnimation 18s ease infinite;
-  }
-  @keyframes gradientAnimation {
-    0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}
-  }
-
-  /* layout */
-  .app {
-    width:1100px;
-    height:700px;
-    position:relative;
-    display:grid;
-    grid-template-columns: 1fr 360px;
-    gap:20px;
-    padding:24px;
-    box-sizing:border-box;
-    z-index:2;
-  }
-
-  .main {
-    background: rgba(255,255,255,0.04);
-    border-radius:14px;
-    padding:28px;
-    box-shadow: 0 6px 30px rgba(0,0,0,0.45);
-    position:relative;
-    overflow:auto;
-  }
-  .side {
-    background: rgba(255,255,255,0.04);
-    border-radius:14px;
-    padding:16px;
-    box-shadow: 0 6px 30px rgba(0,0,0,0.45);
-    overflow:auto;
-  }
-
-  h1 { margin:6px 0 18px 0; letter-spacing:3px; font-size:34px; }
-  p.lead { margin:6px 0 18px 0; opacity:0.9; }
-
-  .controls { margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  input[type=number], select { padding:10px; font-size:16px; border-radius:8px; border:none; min-width:170px; }
-  .btn { padding:10px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
-  .btn-primary { background:white; color:#061124; }
-  .btn-ghost { background: rgba(255,255,255,0.06); color:white; border:1px solid rgba(255,255,255,0.06); }
-
-  .help-area { margin-top:14px; }
-  .market-list { display:flex; flex-direction:column; gap:12px; margin-top:12px; }
-  .stock { display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:8px; background:rgba(255,255,255,0.02); }
-  .stock .meta { display:flex; gap:12px; align-items:center; }
-  .small { font-size:13px; opacity:0.9; }
-
-  .portfolio { margin-top:18px; }
-  .portfolio .row { display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px; }
-
-  /* help modal-ish */
-  #helpBox {
-    display:none;
-    position:fixed;
-    z-index:999;
-    left:50%; top:50%;
-    transform:translate(-50%,-50%);
-    background:rgba(6,17,36,0.95);
-    color:white;
-    padding:20px;
-    border-radius:10px;
-    max-width:600px;
-    box-shadow:0 10px 40px rgba(0,0,0,0.6);
-  }
-  #helpBox button { margin-top:12px; }
-
-  /* star canvas is full-screen behind UI */
-  canvas#stars { position:fixed; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; }
-
-  footer.note { position:absolute; bottom:12px; left:24px; font-size:12px; opacity:0.7; }
-<style>
-html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;overflow:hidden}
+html,body{
+  margin:0;height:100%;overflow:hidden;
+  font-family:Arial,sans-serif;color:white
+}
 body{
-color:white;display:flex;justify-content:center;align-items:flex-start;
-background:linear-gradient(270deg,#0f172a,#022b3a,#0f172a);
-background-size:600% 600%;animation:gradientAnimation 18s ease infinite}
-@keyframes gradientAnimation{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
+  background-size:600% 600%;
+  animation:bgMove 18s ease infinite;
+}
+@keyframes bgMove{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
 
-.app{width:1100px;height:700px;display:grid;grid-template-columns:1fr 360px;gap:20px;padding:24px;box-sizing:border-box}
-.main,.side{
-background:rgba(255,255,255,.04);border-radius:14px;
-box-shadow:0 6px 30px rgba(0,0,0,.45);overflow:auto}
-.main{padding:28px}
-.side{padding:16px}
+canvas#stars{
+  position:fixed;inset:0;z-index:0
+}
 
-h1{font-size:34px;letter-spacing:3px}
-.small{font-size:13px;opacity:.85}
+.app{
+  position:relative;z-index:1;
+  height:100%;display:flex;
+  justify-content:center;align-items:center
+}
 
-.market-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
-.stock{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,.05)}
+.panel{
+  background:rgba(0,0,0,.45);
+  border-radius:16px;
+  padding:30px;
+  width:950px;
+  max-height:90%;
+  overflow:auto;
+  box-shadow:0 0 40px rgba(0,0,0,.6)
+}
 
-.btn{padding:10px 16px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
-.btn-primary{background:white;color:#061124}
-.btn-ghost{background:rgba(255,255,255,.06);color:white}
+h1{text-align:center;letter-spacing:3px}
+.small{opacity:.8;font-size:13px}
 
-footer{font-size:12px;opacity:.7;margin-top:16px}
+button{
+  padding:8px 14px;
+  border:none;border-radius:8px;
+  font-weight:bold;cursor:pointer
+}
+.start-btn{
+  background:white;color:#061124;
+  font-size:16px
+}
+.stock{
+  background:rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:14px;margin-top:14px
+}
+.stock-header{
+  display:flex;justify-content:space-between;align-items:center
+}
+.stock-price{font-weight:800}
+.toggle{background:rgba(255,255,255,.15);color:white}
+.trade{background:white;color:black}
+
+canvas.graph{
+  width:100%;height:120px;
+  margin-top:10px;
+  display:none
+}
 </style>
 </head>
 
 <body>
 <canvas id="stars"></canvas>
 
-<div class="app" role="application" aria-label="Westocks app">
 <div class="app">
-  <div class="main">
-    <h1>WESTOCKS</h1>
-    <p class="lead">Welcome — click the button to start. (Demo only.)</p>
-    <p class="small">Mini stock market demo (random prices)</p>
+  <div class="panel">
 
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-      <button id="askBtn" class="btn btn-primary">Click me</button>
-      <button id="helpBtn" class="btn btn-ghost">Help</button>
-    <div class="portfolio">
-      <h3>Portfolio</h3>
-      <div id="portfolioList" class="small">Loading...</div>
-      <div style="margin-top:8px;font-weight:700">Cash: <span id="cashBal">$0.00</span></div>
-    </div>
-
-    <div class="controls" id="askArea" style="display:none;">
-      <input id="amountInput" type="number" placeholder="Enter amount" step="0.01" />
-      <select id="currencySelect" title="Currency">
-        <option value="USD">$ USD</option>
-        <option value="EUR">€ EUR</option>
-        <option value="GBP">£ GBP</option>
-      </select>
-      <button id="buyBtn" class="btn btn-primary">Buy</button>
-      <div style="margin-left:auto; text-align:right;">
-        <div class="small">Cash balance</div>
-        <div id="cashBal" style="font-weight:700; margin-top:4px;">$ 0.00</div>
+    <!-- START -->
+    <div id="start">
+      <h1>WESTOCKS</h1>
+      <p class="small" style="text-align:center">
+        Demo only — no real money involved
+      </p>
+      <div style="text-align:center;margin-top:30px">
+        <button class="start-btn" onclick="startDemo()">
+          Start investing (Demo) – THIS IS NOT WITH REAL MONEY
+        </button>
       </div>
     </div>
 
-    <div class="help-area" id="helpArea" style="display:none;">
-      <!-- hidden fallback help text if not using modal -->
-    </div>
-
-    <div class="portfolio" id="portfolioArea">
-      <h3 style="margin-bottom:8px;">Portfolio (global)</h3>
-      <div id="portfolioList">
-        <div class="small">Loading portfolio…</div>
+    <!-- MARKET -->
+    <div id="market" style="display:none">
+      <h1>Imaginary Market</h1>
+      <div class="small">
+        Cash balance: <strong>$<span id="cash">1000.00</span></strong>
       </div>
+      <div id="stocks"></div>
     </div>
 
-    <footer class="note">Demo allows negative balances. Do not use real money with this demo.</footer>
-    <footer>
-      Demo only — no real money or real stock data.
-    </footer>
   </div>
-
-  <aside class="side">
-    <h3>Stock Market</h3>
-    <div class="small">Prices update every few seconds (shared across users).</div>
-
-    <div class="market-list" id="marketList">
-      <!-- stocks injected here -->
-    </div>
-
-    <hr style="margin-top:14px; border-color: rgba(255,255,255,0.06);" />
-    <div class="small" style="margin-top:10px;">
-      This demo stores market & portfolio state in Firebase Firestore. Replace config below with your Firebase project settings.
-    </div>
-    <div class="small">Prices update every few seconds</div>
-    <div id="marketList" class="market-list"></div>
-  </aside>
 </div>
-
-<!-- help modal -->
-<div id="helpBox" role="dialog" aria-modal="true">
-  <strong>Help</strong>
-  <p style="margin-top:8px;">
-    Westocks is an investing business. This website is made to help investors invest in us.
-    Then we use your money and invest it, giving your money back and more.
-  </p>
-  <button id="closeHelp" class="btn btn-primary">Close</button>
-</div>
-
-<!-- Firebase (compat) - using CDN compat build for simplicity -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
 <script>
-/* =========================
-   Configuration - REPLACE
-   =========================
-   1) Create a Firebase project at https://console.firebase.google.com/
-   2) Create a Firestore database (start in test mode for demo)
-   3) Copy your project's config object below and paste into firebaseConfig
-   4) IMPORTANT: For a demo you can use test mode, but for production set secure rules and authentication.
-*/
-const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME",
-  projectId: "REPLACE_ME",
-  // rest of your config...
+/* ===== STAR BACKGROUND ===== */
+const sc=document.getElementById("stars");
+const sctx=sc.getContext("2d");
+function resize(){sc.width=innerWidth;sc.height=innerHeight}
+resize();addEventListener("resize",resize);
+const stars=[...Array(200)].map(()=>({
+  x:Math.random()*sc.width,y:Math.random()*sc.height,
+  r:Math.random()*1.4+.3,v:Math.random()*.4+.1
+}));
+(function animStars(){
+  sctx.clearRect(0,0,sc.width,sc.height);
+  stars.forEach(s=>{
+    s.y+=s.v;if(s.y>sc.height)s.y=0;
+    sctx.globalAlpha=Math.random();
+    sctx.beginPath();
+    sctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    sctx.fillStyle="white";
+    sctx.fill();
+  });
+  requestAnimationFrame(animStars);
+})();
+
+/* ===== DATA ===== */
+let cash=1000;
+const stocks={
+  NOVA:{name:"Nova Dynamics",price:120,shares:0,history:[]},
+  ORBX:{name:"Orbex Labs",price:75,shares:0,history:[]},
+  ZENT:{name:"Zenith Core",price:200,shares:0,history:[]}
 };
 
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "REPLACE_ME") {
-  console.warn("Firebase config not set — Firestore will not work until you replace config.");
+/* ===== START ===== */
+function startDemo(){
+  document.getElementById("start").style.display="none";
+  document.getElementById("market").style.display="block";
+  render();
 }
 
-/* Initialize Firebase */
-try {
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-} catch (e) {
-  console.warn("Firebase init failed:", e);
-  var db = null;
-}
-
-/* ==============
-   Application logic
-   ============== */
-
-/* ===== MARKET DATA ===== */
-const DEFAULT_MARKET = {
-  lastUpdate: Date.now(),
-  stocks: {
-    "WSTK": { name: "WESTOCKS Inc.", price: 12.00 },
-    "RNDM": { name: "RandomTech", price: 45.50 },
-    "BLUE": { name: "BlueChipCo", price: 128.75 },
-    "FLUX": { name: "Flux Dynamics", price: 6.30 }
-    AAPL: { name: "Apple Inc.", price: 180.00 },
-    MSFT: { name: "Microsoft", price: 330.00 },
-    GOOGL:{ name: "Alphabet (Google)", price: 140.00 },
-    AMZN: { name: "Amazon", price: 155.00 },
-    TSLA: { name: "Tesla", price: 240.00 },
-    META: { name: "Meta Platforms", price: 310.00 },
-    NVDA: { name: "NVIDIA", price: 480.00 }
+/* ===== PRICE MOVEMENT ===== */
+function updatePrices(){
+  for(const s in stocks){
+    const change=(Math.random()-.5)*0.08;
+    stocks[s].price=Math.max(5,+(stocks[s].price*(1+change)).toFixed(2));
+    stocks[s].history.push(stocks[s].price);
+    if(stocks[s].history.length>60)stocks[s].history.shift();
   }
-};
+  render();
+}
+setInterval(updatePrices,3000);
 
-const MARKET_DOC = "market/global";
-const PORTFOLIO_DOC = "portfolio/global"; // shared across users (demo)
-
-let market = null;
-let portfolio = { cashUSD: 0, holdings: {} };
-let updatingMarketLocally = false;
-
-/* helper */
-function fmtUSD(x) {
-  return (typeof x === "number" ? "$ " + x.toFixed(2) : x);
+/* ===== TRADING ===== */
+function buy(sym){
+  const amt=parseFloat(prompt("How much USD do you want to buy?"));
+  if(isNaN(amt)||amt<=0)return;
+  const st=stocks[sym];
+  const qty=amt/st.price;
+  cash-=amt; // demo allows negative
+  st.shares+=qty;
+  render();
 }
 
-/* Render functions */
-function renderMarketUI() {
-  const container = document.getElementById("marketList");
-  container.innerHTML = "";
-  for (const [sym, info] of Object.entries(market.stocks)) {
-    const dom = document.createElement("div");
-    dom.className = "stock";
-    dom.innerHTML = `
-      <div class="meta">
-        <div><strong>${sym}</strong></div>
-        <div class="small">${info.name}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-weight:800;">${fmtUSD(info.price)}</div>
-        <div style="margin-top:6px;">
-          <button class="btn btn-ghost btn-buy" data-symbol="${sym}">Buy</button>
-          <button class="btn btn-ghost btn-sell" data-symbol="${sym}">Sell</button>
-        </div>
-      </div>
-    `;
-    container.appendChild(dom);
-  }
-let market = JSON.parse(localStorage.getItem("market")) || DEFAULT_MARKET;
-let portfolio = JSON.parse(localStorage.getItem("portfolio")) || { cashUSD: 1000, holdings:{} };
-
-  // attach buttons
-  container.querySelectorAll(".btn-buy").forEach(b => b.addEventListener("click", e => {
-    const sym = e.currentTarget.dataset.symbol;
-    attemptBuy(sym);
-  }));
-  container.querySelectorAll(".btn-sell").forEach(b => b.addEventListener("click", e => {
-    const sym = e.currentTarget.dataset.symbol;
-    attemptSell(sym);
-  }));
-}
-/* ===== HELPERS ===== */
-function fmtUSD(n){return "$"+n.toFixed(2)}
-
-function renderPortfolioUI() {
-  const el = document.getElementById("portfolioList");
-  el.innerHTML = "";
-  const cashRow = document.createElement("div");
-  cashRow.className = "row";
-  cashRow.innerHTML = `<div>Cash (USD)</div><div style="font-weight:800;">${fmtUSD(portfolio.cashUSD)}</div>`;
-  el.appendChild(cashRow);
-function randomWalkPrices(){
-  for(const [sym,info] of Object.entries(market.stocks)){
-    const volatility={
-      TSLA:0.08,NVDA:0.07,META:0.06,
-      AAPL:0.04,MSFT:0.035,GOOGL:0.04,AMZN:0.05
-    }[sym]||0.04;
-
-  const holdings = portfolio.holdings || {};
-  if (Object.keys(holdings).length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "small";
-    empty.textContent = "No holdings yet.";
-    el.appendChild(empty);
-  } else {
-    for (const [sym, qty] of Object.entries(holdings)) {
-      const row = document.createElement("div");
-      row.className = "row";
-      const price = market && market.stocks[sym] ? market.stocks[sym].price : 0;
-      row.innerHTML = `<div style="max-width:220px;"><strong>${sym}</strong> × ${qty.toFixed(4)} <div class="small">${market.stocks && market.stocks[sym] ? market.stocks[sym].name : ''}</div></div>
-                       <div style="text-align:right;">
-                         <div>${fmtUSD(qty * price)}</div>
-                         <div style="margin-top:6px;"><button class="btn btn-ghost btn-sell-one" data-symbol="${sym}">Sell all</button></div>
-                       </div>`;
-      el.appendChild(row);
-    }
-    el.querySelectorAll(".btn-sell-one").forEach(b => b.addEventListener("click", e => {
-      attemptSell(e.currentTarget.dataset.symbol, true);
-    }));
-    const change=(Math.random()-0.5)*volatility;
-    let newPrice=info.price*(1+change);
-    newPrice=Math.max(newPrice,info.price*0.7);
-    info.price=Number(newPrice.toFixed(2));
-  }
-  document.getElementById("cashBal").innerText = fmtUSD(portfolio.cashUSD);
-  market.lastUpdate=Date.now();
-  saveState();
+function sell(sym){
+  const amt=parseFloat(prompt("How much USD do you want to sell?"));
+  if(isNaN(amt)||amt<=0)return;
+  const st=stocks[sym];
+  const qty=amt/st.price;
+  if(qty>st.shares)return alert("Not enough shares");
+  st.shares-=qty;
+  cash+=amt;
+  render();
 }
 
-/* ==============
-   Firestore helpers
-   ============== */
-function writeMarketToFirestore() {
-  if (!db) return;
-  updatingMarketLocally = true;
-  db.doc(MARKET_DOC).set(market).catch(console.error).finally(() => { updatingMarketLocally = false; });
+/* ===== GRAPH ===== */
+function toggleGraph(sym){
+  const c=document.getElementById("g-"+sym);
+  c.style.display=c.style.display==="none"?"block":"none";
+}
+function drawGraph(sym){
+  const c=document.getElementById("g-"+sym);
+  const ctx=c.getContext("2d");
+  const data=stocks[sym].history;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(data.length<2)return;
+  const min=Math.min(...data),max=Math.max(...data);
+  ctx.strokeStyle="white";
+  ctx.beginPath();
+  data.forEach((p,i)=>{
+    const x=i/(data.length-1)*c.width;
+    const y=c.height-(p-min)/(max-min+.01)*c.height;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
 }
 
-function writePortfolioToFirestore() {
-  if (!db) return;
-  db.doc(PORTFOLIO_DOC).set(portfolio).catch(console.error);
-}
-
-/* load or create market & portfolio */
-async function initializeSharedState() {
-  if (!db) {
-    // no firestore: use defaults and localStorage fallback
-    market = JSON.parse(localStorage.getItem("demo_market") || JSON.stringify(DEFAULT_MARKET));
-    portfolio = JSON.parse(localStorage.getItem("demo_portfolio") || JSON.stringify(portfolio));
-    renderMarketUI(); renderPortfolioUI();
-    startLocalPriceFluctuation();
-    return;
 /* ===== RENDER ===== */
-function renderMarket(){
-  const list=document.getElementById("marketList");
-  list.innerHTML="";
-  for(const [sym,info] of Object.entries(market.stocks)){
+function render(){
+  document.getElementById("cash").innerText=cash.toFixed(2);
+  const wrap=document.getElementById("stocks");
+  wrap.innerHTML="";
+  for(const s in stocks){
+    const st=stocks[s];
     const div=document.createElement("div");
     div.className="stock";
     div.innerHTML=`
-      <div>
-        <strong>${sym}</strong>
-        <div class="small">${info.name}</div>
+      <div class="stock-header">
+        <div>
+          <strong>${s}</strong>
+          <div class="small">${st.name}</div>
+          <div class="small">Owned: ${st.shares.toFixed(3)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="stock-price">$${st.price}</div>
+          <button class="trade" onclick="buy('${s}')">Buy</button>
+          <button class="trade" onclick="sell('${s}')">Sell</button>
+          <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-weight:800">${fmtUSD(info.price)}</div>
-        <button class="btn btn-ghost" onclick="buy('${sym}')">Buy</button>
-        <button class="btn btn-ghost" onclick="sell('${sym}')">Sell</button>
-      </div>`;
-    list.appendChild(div);
+      <canvas class="graph" id="g-${s}" width="800" height="120"></canvas>
+    `;
+    wrap.appendChild(div);
+    drawGraph(s);
   }
-
-  // Watch market doc
-  db.doc(MARKET_DOC).onSnapshot(doc => {
-    if (!doc.exists) {
-      market = DEFAULT_MARKET;
-      writeMarketToFirestore();
-    } else {
-      if (!updatingMarketLocally) {
-        market = doc.data();
-      } else {
-        // our local write caused this snapshot; still update local variable
-        market = doc.data();
-      }
-    }
-    renderMarketUI();
-    renderPortfolioUI();
-  });
-
-  // Watch portfolio doc (global)
-  db.doc(PORTFOLIO_DOC).onSnapshot(doc => {
-    if (!doc.exists) {
-      // create default portfolio
-      portfolio = { cashUSD: 0, holdings: {} };
-      writePortfolioToFirestore();
-    } else {
-      portfolio = doc.data();
-    }
-    renderPortfolioUI();
-  });
 }
-
-/* ==============
-   Market price random walk
-   ============== */
-function randomWalkPrices() {
-  if (!market) return;
-  const now = Date.now();
-  for (const [sym, info] of Object.entries(market.stocks)) {
-    // random percent change between -3% and +3%
-    const pct = (Math.random() - 0.5) * 0.06;
-    let newPrice = Math.max(0.01, info.price * (1 + pct));
-    market.stocks[sym].price = Number(newPrice.toFixed(2));
-function renderPortfolio(){
-  const el=document.getElementById("portfolioList");
-  el.innerHTML="";
-  for(const [sym,qty] of Object.entries(portfolio.holdings)){
-    const value=qty*market.stocks[sym].price;
-    el.innerHTML+=`<div>${sym}: ${qty.toFixed(2)} (${fmtUSD(value)})</div>`;
-  }
-  market.lastUpdate = now;
-  writeMarketToFirestore();
-  if(!Object.keys(portfolio.holdings).length)
-    el.innerHTML="<div class='small'>No holdings</div>";
-  document.getElementById("cashBal").innerText=fmtUSD(portfolio.cashUSD);
-}
-
-/* fallback local random fluctuation if no Firestore */
-function startLocalPriceFluctuation() {
-  setInterval(() => {
-    randomWalkPrices();
-    localStorage.setItem("demo_market", JSON.stringify(market));
-    renderMarketUI();
-    renderPortfolioUI();
-  }, 5000 + Math.random()*3000);
-/* ===== BUY / SELL ===== */
-function buy(sym){
-  const price=market.stocks[sym].price;
-  const shares=100/price;
-  portfolio.cashUSD-=100;
-  portfolio.holdings[sym]=(portfolio.holdings[sym]||0)+shares;
-  saveState();
-}
-
-/* ==============
-   Buy / Sell logic
-   ============== */
-
-function currencyToUSD(amount, currency) {
-  // demo fixed rates only for UX. In real app use live FX.
-  const rates = { USD:1, EUR:1.08, GBP:1.25 }; // 1 EUR = 1.08 USD etc (example)
-  return amount * (rates[currency] || 1);
-function sell(sym){
-  if(!portfolio.holdings[sym])return;
-  const value=portfolio.holdings[sym]*market.stocks[sym].price;
-  portfolio.cashUSD+=value;
-  delete portfolio.holdings[sym];
-  saveState();
-}
-
-function attemptBuy(symbol) {
-  const amt = parseFloat(document.getElementById("amountInput").value);
-  const currency = document.getElementById("currencySelect").value;
-  if (isNaN(amt) || amt <= 0) {
-    alert("Enter a positive amount to invest.");
-    return;
-  }
-  const usd = currencyToUSD(amt, currency);
-  const price = market.stocks[symbol].price;
-  const shares = usd / price;
-  // allow negatives cash
-  portfolio.cashUSD -= usd;
-  portfolio.holdings[symbol] = (portfolio.holdings[symbol] || 0) + shares;
-  writePortfolioToFirestore();
-  renderPortfolioUI();
-  // nice feedback
-  toast(`Bought ${shares.toFixed(4)} ${symbol} for ${fmtUSD(usd)} (converted from ${currency}).`);
-/* ===== SAVE ===== */
-function saveState(){
-  localStorage.setItem("market",JSON.stringify(market));
-  localStorage.setItem("portfolio",JSON.stringify(portfolio));
-  renderMarket();
-  renderPortfolio();
-}
-
-function attemptSell(symbol, sellAll = false) {
-  const holding = portfolio.holdings[symbol] || 0;
-  if (holding <= 0) {
-    alert("No holdings to sell.");
-    return;
-  }
-  const price = market.stocks[symbol].price;
-  const amountUSD = holding * price;
-  // Sell all (simple)
-  portfolio.cashUSD += amountUSD;
-  delete portfolio.holdings[symbol];
-  writePortfolioToFirestore();
-  renderPortfolioUI();
-  toast(`Sold ${symbol} for ${fmtUSD(amountUSD)}.`);
-}
-
-/* small toast */
-function toast(msg) {
-  const t = document.createElement("div");
-  t.textContent = msg;
-  t.style.position = "fixed";
-  t.style.right = "20px";
-  t.style.bottom = "20px";
-  t.style.padding = "12px 16px";
-  t.style.background = "rgba(0,0,0,0.7)";
-  t.style.color = "white";
-  t.style.borderRadius = "8px";
-  t.style.zIndex = 9999;
-  document.body.appendChild(t);
-  setTimeout(()=> t.style.opacity = "0.0", 2500);
-  setTimeout(()=> t.remove(), 3200);
-}
-
-/* ==============
-   UI wiring
-   ============== */
-document.getElementById("askBtn").addEventListener("click", () => {
-  const askBtn = document.getElementById("askBtn");
-  askBtn.innerText = "How much do you want to invest?";
-  document.getElementById("askArea").style.display = "flex";
-  document.getElementById("amountInput").focus();
-});
-
-document.getElementById("buyBtn").addEventListener("click", () => {
-  // if user selected a symbol? We'll default to first market symbol for "Buy" quick action
-  const firstSym = Object.keys(market.stocks)[0];
-  if (!firstSym) { alert("No market data."); return; }
-  attemptBuy(firstSym);
-});
-
-document.getElementById("helpBtn").addEventListener("click", () => {
-  document.getElementById("helpBox").style.display = "block";
-});
-document.getElementById("closeHelp").addEventListener("click", () => {
-  document.getElementById("helpBox").style.display = "none";
-});
-
-/* keyboard: press Enter in amount to click Buy */
-document.getElementById("amountInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") document.getElementById("buyBtn").click();
-});
-
-/* ==============
-   Periodic market updates (clients will write to shared doc)
-   ============== */
-setInterval(() => {
-  // occasionally update market prices from this client
-  if (!market) return;
-  // small probability to run update to avoid thundering herd
-  if (Math.random() < 0.4) {
-    randomWalkPrices();
-  }
-}, 5000);
-
-/* If Firestore is not available, fallback to local behavior */
-initializeSharedState();
-
-/* ==============
-   Starfield background (canvas)
-   ============== */
-(function starfield(){
-  const canvas = document.getElementById("stars");
-  const ctx = canvas.getContext("2d");
-  let W = canvas.width = innerWidth;
-  let H = canvas.height = innerHeight;
-  const num = Math.floor((W*H)/6000); // density
-  const stars = [];
-  for (let i=0;i<num;i++) stars.push({
-    x: Math.random()*W,
-    y: Math.random()*H,
-    r: Math.random()*1.4 + 0.3,
-    vx: (Math.random()-0.5)*0.05,
-    vy: (Math.random()-0.5)*0.05,
-    alpha: Math.random()*0.7 + 
-/* ===== START ===== */
-renderMarket();
-renderPortfolio();
-setInterval(randomWalkPrices,4000);
 </script>
-
 </body>
 </html>
+
