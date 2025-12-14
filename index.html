@@ -43,7 +43,19 @@ canvas#stars{
   box-shadow:0 0 40px rgba(0,0,0,.6)
 }
 
-h1{text-align:center;letter-spacing:4px;margin-top:0}
+h1{
+  text-align:center;
+  letter-spacing:4px;
+  margin:0;
+}
+
+.player-count{
+  text-align:center;
+  font-size:13px;
+  opacity:.85;
+  margin-bottom:14px;
+}
+
 .small{opacity:.8;font-size:13px}
 
 button{
@@ -51,7 +63,10 @@ button{
   border:none;border-radius:8px;
   font-weight:bold;cursor:pointer
 }
-.start-btn{background:white;color:#061124;font-size:16px}
+.start-btn{
+  background:white;color:#061124;
+  font-size:16px
+}
 .stock{
   background:rgba(255,255,255,.08);
   border-radius:12px;
@@ -68,6 +83,7 @@ canvas.graph{
   width:100%;
   height:120px;
   margin-top:10px;
+  display:none;
   background:rgba(0,0,0,.25);
   border-radius:8px
 }
@@ -81,6 +97,9 @@ canvas.graph{
   <div class="panel">
 
     <h1>WESTOCKS</h1>
+    <div class="player-count">
+      🟢 Active players: <span id="players">1,204</span>
+    </div>
 
     <!-- START -->
     <div id="start">
@@ -124,12 +143,15 @@ function resize(){
 resize();
 addEventListener("resize",resize);
 
-const stars=[...Array(180)].map(()=>({
-  x:Math.random()*innerWidth,
-  y:Math.random()*innerHeight,
-  r:Math.random()*1.5+.3,
-  v:Math.random()*.4+.1
-}));
+const stars=[];
+for(let i=0;i<180;i++){
+  stars.push({
+    x:Math.random()*sc.width,
+    y:Math.random()*sc.height,
+    r:Math.random()*1.5+.3,
+    v:Math.random()*.4+.1
+  });
+}
 
 (function animateStars(){
   sctx.clearRect(0,0,sc.width,sc.height);
@@ -144,6 +166,17 @@ const stars=[...Array(180)].map(()=>({
   }
   requestAnimationFrame(animateStars);
 })();
+
+/* ===== FAKE ACTIVE PLAYER COUNT ===== */
+let players = 1200 + Math.floor(Math.random()*200);
+const playersEl = document.getElementById("players");
+
+function updatePlayers(){
+  const change = Math.floor(Math.random()*15 - 7);
+  players = Math.max(300, players + change);
+  playersEl.innerText = players.toLocaleString();
+}
+setInterval(updatePlayers, 4000);
 
 /* ===== DATA ===== */
 let cash=1000;
@@ -180,8 +213,9 @@ function buy(sym){
   const usd=parseFloat(prompt("How much USD do you want to buy?"));
   if(isNaN(usd)||usd<=0)return;
   const st=stocks[sym];
+  const shares=usd/st.price;
   cash-=usd;
-  st.shares+=usd/st.price;
+  st.shares+=shares;
   render();
 }
 
@@ -196,9 +230,19 @@ function sell(sym){
 }
 
 /* ===== GRAPHS ===== */
+function toggleGraph(sym){
+  const c=document.getElementById("g-"+sym);
+  c.style.display=c.style.display==="none"?"block":"none";
+  if(c.style.display==="block") drawGraph(sym);
+}
+
 function toggleAllGraphs(){
   allGraphsVisible=!allGraphsVisible;
-  render();
+  for(const sym in stocks){
+    const c=document.getElementById("g-"+sym);
+    c.style.display=allGraphsVisible?"block":"none";
+    if(allGraphsVisible) drawGraph(sym);
+  }
 }
 
 function drawGraph(sym){
@@ -226,7 +270,6 @@ function render(){
   document.getElementById("cash").innerText=cash.toFixed(2);
   const wrap=document.getElementById("stocks");
   wrap.innerHTML="";
-
   for(const sym in stocks){
     const st=stocks[sym];
     const div=document.createElement("div");
@@ -242,10 +285,10 @@ function render(){
           <div class="stock-price">$${st.price}</div>
           <button class="trade" onclick="buy('${sym}')">Buy</button>
           <button class="trade" onclick="sell('${sym}')">Sell</button>
+          <button class="toggle" onclick="toggleGraph('${sym}')">Graph</button>
         </div>
       </div>
-      <canvas class="graph" id="g-${sym}" width="800" height="120"
-        style="display:${allGraphsVisible?'block':'none'}"></canvas>
+      <canvas class="graph" id="g-${sym}" width="800" height="120"></canvas>
     `;
     wrap.appendChild(div);
     if(allGraphsVisible) drawGraph(sym);
