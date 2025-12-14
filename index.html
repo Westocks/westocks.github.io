@@ -21,76 +21,61 @@ body{
   100%{background-position:0% 50%}
 }
 
-canvas#stars{position:fixed;inset:0;z-index:0}
+#stars{
+  position:fixed;inset:0;z-index:0
+}
 
 .app{
   position:relative;z-index:1;
-  height:100%;display:flex;
-  justify-content:center;align-items:center
+  height:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center
 }
 
 .panel{
   background:rgba(0,0,0,.45);
   border-radius:16px;
-  padding:24px;
+  padding:26px;
   width:1000px;
   max-height:92%;
   overflow:auto;
   box-shadow:0 0 40px rgba(0,0,0,.6)
 }
 
-h1{text-align:center;letter-spacing:4px;margin-top:0}
+h1{text-align:center;letter-spacing:4px;margin:0}
 .small{opacity:.8;font-size:13px}
 
-button{
-  padding:8px 14px;
-  border:none;border-radius:8px;
-  font-weight:bold;cursor:pointer
+button,input{
+  padding:7px 12px;
+  border-radius:8px;
+  border:none;
+  font-weight:bold
 }
+button{cursor:pointer}
 .trade{background:white;color:black}
-.toggle{background:rgba(255,255,255,.18);color:white}
+.toggle{background:rgba(255,255,255,.2);color:white}
 
 .stock{
   background:rgba(255,255,255,.08);
   border-radius:12px;
-  padding:14px;margin-top:14px
+  padding:14px;
+  margin-top:14px
 }
+
 .stock-header{
-  display:flex;justify-content:space-between;align-items:center
+  display:flex;
+  justify-content:space-between;
+  align-items:center
 }
-.stock-price{font-weight:800}
 
 canvas.graph{
-  width:100%;height:120px;
-  margin-top:10px;
-  display:none;
-  background:rgba(0,0,0,.25);
-  border-radius:8px
-}
-
-/* TRADE PANEL */
-#tradePanel{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.65);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:10
-}
-.trade-box{
-  background:#0f172a;
-  padding:20px;
-  border-radius:14px;
-  width:300px;
-  text-align:center
-}
-.trade-box input{
   width:100%;
-  padding:8px;
-  margin-top:10px;
+  height:140px;
+  background:rgba(0,0,0,.25);
   border-radius:8px;
-  border:none
+  margin-top:10px;
+  display:none
 }
 </style>
 </head>
@@ -102,59 +87,66 @@ canvas.graph{
   <div class="panel">
 
     <h1>WESTOCKS</h1>
-    <div class="small" style="text-align:center">
-      Demo only — NOT real money • Active players: <span id="players"></span>
+
+    <!-- START SCREEN -->
+    <div id="start">
+      <p class="small" style="text-align:center">
+        Demo only — NOT real money
+      </p>
+      <div style="text-align:center;margin-top:20px">
+        <button class="trade" onclick="startDemo()">
+          Start Investing (Demo)
+        </button>
+      </div>
     </div>
 
-    <div class="small" style="margin-top:10px">
-      Cash: $<span id="cash">1000.00</span>
+    <!-- MARKET -->
+    <div id="market" style="display:none">
+      <div class="small">
+        Cash: $<span id="cash">1000.00</span> |
+        Active players: <span id="players">1</span>
+      </div>
+
+      <div style="margin:12px 0">
+        <button class="toggle" onclick="toggleAllGraphs()">Toggle All Graphs</button>
+      </div>
+
+      <div id="stocks"></div>
     </div>
 
-    <div style="margin:12px 0">
-      <button class="toggle" onclick="toggleAllGraphs()">Toggle All Graphs</button>
-    </div>
-
-    <div id="stocks"></div>
-
-  </div>
-</div>
-
-<!-- TRADE PANEL -->
-<div id="tradePanel">
-  <div class="trade-box">
-    <h3 id="tradeTitle"></h3>
-    <input id="tradeInput" type="number" step="any">
-    <div style="margin-top:14px">
-      <button class="trade" onclick="confirmTrade()">Confirm</button>
-      <button class="toggle" onclick="closeTrade()">Cancel</button>
-    </div>
   </div>
 </div>
 
 <script>
-/* ===== STARS ===== */
-const sc=document.getElementById("stars"),ctx=sc.getContext("2d");
+/* ========= STAR BACKGROUND ========= */
+const sc=document.getElementById("stars");
+const ctx=sc.getContext("2d");
 function resize(){sc.width=innerWidth;sc.height=innerHeight}
 resize();addEventListener("resize",resize);
+
 const stars=[...Array(180)].map(()=>({
-  x:Math.random()*sc.width,y:Math.random()*sc.height,
-  r:Math.random()*1.5+.3,v:Math.random()*.4+.1
+  x:Math.random()*sc.width,
+  y:Math.random()*sc.height,
+  r:Math.random()*1.5+.3,
+  v:Math.random()*.4+.1
 }));
-(function anim(){
+
+(function animate(){
   ctx.clearRect(0,0,sc.width,sc.height);
   stars.forEach(s=>{
     s.y+=s.v;if(s.y>sc.height)s.y=0;
     ctx.globalAlpha=Math.random();
-    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle="white";ctx.fill();
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle="white";
+    ctx.fill();
   });
-  requestAnimationFrame(anim);
+  requestAnimationFrame(animate);
 })();
 
-/* ===== DATA ===== */
+/* ========= DATA ========= */
 let cash=1000;
-let allGraphs=false;
-let tradeMode=null,tradeStock=null;
+let showGraphs=false;
 
 const stocks={
   NOVA:{name:"Nova Dynamics",price:120,shares:0,history:[120]},
@@ -162,73 +154,89 @@ const stocks={
   ZENT:{name:"Zenith Core",price:200,shares:0,history:[200]}
 };
 
-/* ===== ACTIVE PLAYERS (FAKE) ===== */
-const base=Math.floor(Math.random()*200)+50;
-document.getElementById("players").innerText=base;
+/* ========= FAKE PLAYER COUNT ========= */
+let players=1+Math.floor(Math.random()*30);
+setInterval(()=>{
+  players+=Math.floor(Math.random()*3)-1;
+  if(players<1)players=1;
+  document.getElementById("players").innerText=players;
+},3000);
 
-/* ===== PRICES ===== */
+/* ========= START ========= */
+function startDemo(){
+  document.getElementById("start").style.display="none";
+  document.getElementById("market").style.display="block";
+  render();
+}
+
+/* ========= MARKET MOVEMENT ========= */
 setInterval(()=>{
   for(const s in stocks){
     const st=stocks[s];
-    const ch=(Math.random()-.5)*0.08;
-    st.price=Math.max(5,+(st.price*(1+ch)).toFixed(2));
+    const change=(Math.random()-.5)*0.07;
+    st.price=Math.max(5,+(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
     if(st.history.length>80)st.history.shift();
   }
   render();
 },3000);
 
-/* ===== TRADE UI ===== */
-function openTrade(sym,mode){
-  tradeStock=sym;
-  tradeMode=mode;
-  document.getElementById("tradePanel").style.display="flex";
-  document.getElementById("tradeTitle").innerText=
-    mode==="buy" ? "Buy with USD" : "Sell shares";
-  document.getElementById("tradeInput").value="";
-}
-function closeTrade(){
-  document.getElementById("tradePanel").style.display="none";
-}
-function confirmTrade(){
-  const val=parseFloat(document.getElementById("tradeInput").value);
-  if(isNaN(val)||val<=0)return;
-  const st=stocks[tradeStock];
-  if(tradeMode==="buy"){
-    cash-=val;
-    st.shares+=val/st.price;
-  }else{
-    if(val>st.shares)return;
-    st.shares-=val;
-    cash+=val*st.price;
-  }
-  closeTrade();
+/* ========= BUY / SELL (ON SCREEN) ========= */
+function buy(sym){
+  const input=document.getElementById("buy-"+sym);
+  const usd=parseFloat(input.value);
+  if(isNaN(usd)||usd<=0)return;
+  const st=stocks[sym];
+  cash-=usd; // negatives allowed
+  st.shares+=usd/st.price;
+  input.value="";
   render();
 }
 
-/* ===== GRAPHS ===== */
-function toggleAllGraphs(){
-  allGraphs=!allGraphs;
-  document.querySelectorAll(".graph").forEach(c=>{
-    c.style.display=allGraphs?"block":"none";
-  });
+function sell(sym){
+  const input=document.getElementById("sell-"+sym);
+  const qty=parseFloat(input.value);
+  if(isNaN(qty)||qty<=0)return;
+  const st=stocks[sym];
+  if(qty>st.shares)return;
+  st.shares-=qty;
+  cash+=qty*st.price;
+  input.value="";
+  render();
 }
+
+/* ========= GRAPHS ========= */
+function toggleAllGraphs(){
+  showGraphs=!showGraphs;
+  document.querySelectorAll(".graph").forEach(c=>{
+    c.style.display=showGraphs?"block":"none";
+  });
+  if(showGraphs) drawAllGraphs();
+}
+
+function drawAllGraphs(){
+  for(const s in stocks) drawGraph(s);
+}
+
 function drawGraph(sym){
-  const c=document.getElementById("g-"+sym),g=c.getContext("2d");
+  const c=document.getElementById("g-"+sym);
+  if(!c)return;
+  const g=c.getContext("2d");
   const d=stocks[sym].history;
   g.clearRect(0,0,c.width,c.height);
   if(d.length<2)return;
   const min=Math.min(...d),max=Math.max(...d);
-  g.strokeStyle="white";g.beginPath();
+  g.strokeStyle="white";
+  g.beginPath();
   d.forEach((p,i)=>{
     const x=i/(d.length-1)*c.width;
-    const y=c.height-(p-min)/(max-min+.01)*c.height;
+    const y=c.height-(p-min)/(max-min+0.01)*c.height;
     i?g.lineTo(x,y):g.moveTo(x,y);
   });
   g.stroke();
 }
 
-/* ===== RENDER ===== */
+/* ========= RENDER ========= */
 function render(){
   document.getElementById("cash").innerText=cash.toFixed(2);
   const wrap=document.getElementById("stocks");
@@ -244,19 +252,26 @@ function render(){
             <div class="small">Owned: ${st.shares.toFixed(3)}</div>
           </div>
           <div style="text-align:right">
-            <div class="stock-price">$${st.price}</div>
-            <button class="trade" onclick="openTrade('${s}','buy')">Buy</button>
-            <button class="trade" onclick="openTrade('${s}','sell')">Sell</button>
+            <div><strong>$${st.price}</strong></div>
           </div>
         </div>
-        <canvas class="graph" id="g-${s}" width="800" height="120"></canvas>
+
+        <div style="margin-top:8px">
+          <input id="buy-${s}" type="number" placeholder="USD to buy">
+          <button class="trade" onclick="buy('${s}')">Buy</button>
+        </div>
+
+        <div style="margin-top:6px">
+          <input id="sell-${s}" type="number" placeholder="Shares to sell">
+          <button class="trade" onclick="sell('${s}')">Sell</button>
+        </div>
+
+        <canvas class="graph" id="g-${s}" width="900" height="140"></canvas>
       </div>
     `;
-    drawGraph(s);
+    if(showGraphs) drawGraph(s);
   }
 }
-render();
 </script>
-
 </body>
 </html>
