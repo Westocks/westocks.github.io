@@ -144,19 +144,75 @@ function render(){
   for(const s in stocks) if(stocks[s].show) drawGraph(s);
 }
 
+///////////////////// DRAW GRAPH WITH AXES ////////////////////
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym), ctx=c.getContext("2d"), data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
+  
   let min=Math.min(...data), max=Math.max(...data);
+  
+  // Y-axis
+  ctx.strokeStyle='white';
+  ctx.lineWidth=1;
   ctx.beginPath();
-  data.forEach((p,i)=>{let x=i/(data.length-1)*c.width,y=c.height-(p-min)/(max-min+0.01)*c.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
-  ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke();
-  // shaded area
-  ctx.lineTo(c.width,c.height); ctx.lineTo(0,c.height); ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fill();
-  // latest price highlight
-  let lastY=c.height-(data[data.length-1]-min)/(max-min+0.01)*c.height;
+  ctx.moveTo(40,0);
+  ctx.lineTo(40,c.height);
+  ctx.stroke();
+  
+  // X-axis
+  ctx.beginPath();
+  ctx.moveTo(40,c.height-20);
+  ctx.lineTo(c.width,c.height-20);
+  ctx.stroke();
+  
+  ctx.fillStyle='white';
+  ctx.font='12px Arial';
+  ctx.textAlign='right';
+  
+  // Y labels & grid
+  for(let i=0;i<=5;i++){
+    let y = i*(c.height-30)/5;
+    let price = (max - i*(max-min)/5).toFixed(2);
+    ctx.fillText(price,35,y+5);
+    ctx.beginPath();
+    ctx.moveTo(40,y);
+    ctx.lineTo(c.width,y);
+    ctx.strokeStyle='rgba(255,255,255,0.1)';
+    ctx.stroke();
+  }
+  
+  // X labels
+  ctx.textAlign='center';
+  for(let i=0;i<data.length;i+=10){
+    let x = 40 + (i/(data.length-1))*(c.width-40);
+    ctx.fillText(i,x,c.height-5);
+  }
+  
+  // Stock line
+  ctx.strokeStyle='white';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  data.forEach((p,i)=>{
+    let x = 40 + (i/(data.length-1))*(c.width-40);
+    let y = (c.height-20) - (p-min)/(max-min+0.01)*(c.height-30);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+  
+  // Shaded area
+  ctx.lineTo(c.width,c.height-20); ctx.lineTo(40,c.height-20);
+  ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fill();
+  
+  // Latest price
+  let lastY = (c.height-20) - (data[data.length-1]-min)/(max-min+0.01)*(c.height-30);
   ctx.beginPath(); ctx.arc(c.width,lastY,3,0,Math.PI*2); ctx.fillStyle='yellow'; ctx.fill();
-  if(stocks[sym].buyPrice){let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height; ctx.strokeStyle="lime"; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(c.width,y); ctx.stroke();}
+  
+  // Buy price line
+  if(stocks[sym].buyPrice){
+    let y = (c.height-20) - (stocks[sym].buyPrice-min)/(max-min+0.01)*(c.height-30);
+    ctx.strokeStyle="lime";
+    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(c.width,y); ctx.stroke();
+  }
 }
 
 function showMsg(t){document.getElementById("message").innerText=t}
