@@ -73,6 +73,12 @@ canvas{
   font-size:16px;
   opacity:.9;
 }
+@keyframes pulse {
+  0%{transform:scale(1); opacity:0.8;}
+  50%{transform:scale(1.1); opacity:1;}
+  100%{transform:scale(1); opacity:0.8;}
+}
+#activeCount.flash { animation: pulse 0.5s ease; }
 </style>
 </head>
 <body>
@@ -113,16 +119,24 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const userRef = db.ref('activePlayers');
-const userId = Date.now(); // simple unique ID for this session
 
-// Add user on page load
-userRef.child(userId).set(true);
-// Remove user on page unload
-window.addEventListener('beforeunload', () => userRef.child(userId).remove());
-// Listen for changes
+// Unique session ID
+const userId = Math.random().toString(36).substring(2) + Date.now();
+const myRef = userRef.child(userId);
+
+// Add self to database
+myRef.set(true).catch(err=>console.error("Firebase write failed:", err));
+
+// Remove on leave
+window.addEventListener('beforeunload', () => myRef.remove());
+
+// Update active player count
 userRef.on('value', snapshot => {
   const count = snapshot.numChildren();
-  document.getElementById('activeCount').innerText = `Active Players: ${count}`;
+  const el = document.getElementById('activeCount');
+  el.innerText = `Active Players: ${count}`;
+  el.classList.add('flash');
+  setTimeout(()=>el.classList.remove('flash'), 500);
 });
 
 // ---------------- STOCK SIMULATOR ----------------
@@ -142,6 +156,7 @@ function start(){
 function updatePrices(){
   for(const s in stocks){
     let st=stocks[s];
+    let oldPrice = st.price;
     let change=(Math.random()-0.5)*0.05;
     st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
@@ -214,6 +229,9 @@ function drawGraph(sym){
   let max=Math.max(...data);
 
   ctx.strokeStyle="white";
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
   ctx.beginPath();
   data.forEach((p,i)=>{
     let x=i/(data.length-1)*c.width;
@@ -222,6 +240,16 @@ function drawGraph(sym){
   });
   ctx.stroke();
 
+  // Gradient fill under line
+  let gradient = ctx.createLinearGradient(0,0,0,c.height);
+  gradient.addColorStop(0, "rgba(255,255,255,0.3)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.lineTo(c.width, c.height);
+  ctx.lineTo(0, c.height);
+  ctx.fill();
+
+  // Buy price line
   if(stocks[sym].buyPrice){
     let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.strokeStyle="lime";
