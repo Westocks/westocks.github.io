@@ -7,16 +7,23 @@
 
 <style>
 html,body{
-  margin:0;height:100%;
+  margin:0;
+  height:100%;
   font-family:Arial,sans-serif;
-  background:#0f2027;
   color:white;
 }
+
+/* CENTER EVERYTHING */
 body{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
   background-size:600% 600%;
   animation:bg 18s ease infinite;
 }
+
 @keyframes bg{
   0%{background-position:0% 50%}
   50%{background-position:100% 50%}
@@ -25,7 +32,7 @@ body{
 
 .container{
   max-width:1000px;
-  margin:20px auto;
+  width:100%;
   background:rgba(0,0,0,.45);
   padding:20px;
   border-radius:16px;
