@@ -5,26 +5,23 @@
 <title>WESTOCKS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Firebase (compat version) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // --- Firebase Config ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyDcgWQyY9QewcZ5v1QLC6rRD9AWfqicKgQ",
-    authDomain: "westocks-5184b.firebaseapp.com",
-    databaseURL: "https://westocks-5184b-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "westocks-5184b",
-    storageBucket: "westocks-5184b.firebasestorage.app",
-    messagingSenderId: "265102905724",
-    appId: "1:265102905724:web:52c5c7365df3929a32d4f9",
-    measurementId: "G-RSMLRH5ZTL"
-  };
-
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+const firebaseConfig = {
+  apiKey: "AIzaSyDcgWQyY9QewcZ5v1QLC6rRD9AWfqicKgQ",
+  authDomain: "westocks-5184b.firebaseapp.com",
+  databaseURL: "https://westocks-5184b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "westocks-5184b",
+  storageBucket: "westocks-5184b.firebasestorage.app",
+  messagingSenderId: "265102905724",
+  appId: "1:265102905724:web:52c5c7365df3929a32d4f9",
+  measurementId: "G-RSMLRH5ZTL"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 </script>
 
 <style>
@@ -41,27 +38,24 @@ button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:po
 canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none}
 #message{margin-top:10px;font-size:14px;opacity:.9}
 #activeCount{text-align:center;margin-bottom:10px;font-size:16px;opacity:.9}
-@keyframes pulse{0%{transform:scale(1);opacity:0.8}50%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:0.8}}
-#activeCount.flash{animation:pulse 0.5s ease}
 #portfolio{margin-top:10px;text-align:center;font-size:16px;opacity:.9}
 .profit{color:lime;}
 .loss{color:red;}
+@keyframes pulse{0%{transform:scale(1);opacity:0.8}50%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:0.8}}
+#activeCount.flash{animation:pulse 0.5s ease}
 </style>
 </head>
 <body>
 
 <div class="container">
   <h1>WESTOCKS</h1>
-
   <div id="activeCount">Active Players: 0</div>
-
   <div id="start">
     <p style="text-align:center">Demo only — not real money</p>
     <div style="text-align:center">
       <button class="buy" onclick="start()">Start Investing</button>
     </div>
   </div>
-
   <div id="market" style="display:none">
     <div>Cash: $<span id="cash">1000.00</span></div>
     <div id="portfolio">Portfolio Value: $<span id="portfolioValue">1000.00</span></div>
@@ -73,9 +67,9 @@ canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-r
 <script>
 //////////////////// ACTIVE PLAYER COUNTER ////////////////////
 const userRef = db.ref('activePlayers');
-const userId = Math.random().toString(36).substring(2) + Date.now();
+const userId = Math.random().toString(36).substring(2)+Date.now();
 const myRef = userRef.child(userId);
-myRef.set(true).catch(err=>console.error(err));
+myRef.set(true).catch(console.error);
 window.addEventListener('beforeunload',()=>myRef.remove());
 userRef.on('value', snapshot=>{
   const count = snapshot.numChildren();
@@ -86,24 +80,20 @@ userRef.on('value', snapshot=>{
 });
 
 //////////////////// STOCK SIMULATOR ////////////////////
-let cash=1000;
-const stocks={
-  NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
-  ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
-  ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
+let cash = parseFloat(localStorage.getItem('cash')) || 1000;
+const stocks = {
+  NOVA:{price:120,shares:parseFloat(localStorage.getItem('NOVA_shares'))||0,history:[120],buyPrice:null,show:false},
+  ORBX:{price:80,shares:parseFloat(localStorage.getItem('ORBX_shares'))||0,history:[80],buyPrice:null,show:false},
+  ZENT:{price:200,shares:parseFloat(localStorage.getItem('ZENT_shares'))||0,history:[200],buyPrice:null,show:false}
 };
 
-function start(){
-  document.getElementById("start").style.display="none";
-  document.getElementById("market").style.display="block";
-  render();
-}
+function start(){document.getElementById("start").style.display="none";document.getElementById("market").style.display="block";render()}
 
 function updatePrices(){
   for(const s in stocks){
-    let st=stocks[s];
-    let change=(Math.random()-0.5)*0.05;
-    st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
+    let st = stocks[s];
+    let change = (Math.random()-0.5)*0.05;
+    st.price=Math.max(1, +(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
     if(st.history.length>60) st.history.shift();
   }
@@ -112,58 +102,41 @@ function updatePrices(){
 setInterval(updatePrices,2500);
 
 ///////////////////// BUY/SELL ////////////////////
-function buy(sym){
-  let amt=parseFloat(prompt("Enter USD amount to buy"));
-  if(isNaN(amt)||amt<=0||amt>cash){showMsg("Invalid amount");return}
-  let st=stocks[sym]; let shares=amt/st.price; cash-=amt; st.shares+=shares; st.buyPrice=st.price;
-  showMsg(`Bought ${shares.toFixed(3)} ${sym}`);
-  render();
-}
-function buyAll(sym){
-  if(cash<=0)return;
-  let st=stocks[sym]; let shares=cash/st.price; st.shares+=shares; st.buyPrice=st.price; cash=0;
-  showMsg(`Bought ALL ${sym}`);
-  render();
-}
-function sell(sym){
-  let qty=parseFloat(prompt("Enter shares to sell"));
-  let st=stocks[sym];
-  if(isNaN(qty)||qty<=0||qty>st.shares){showMsg("Invalid share amount");return}
-  st.shares-=qty; cash+=qty*st.price;
-  showMsg(`Sold ${qty.toFixed(3)} ${sym}`);
-  render();
-}
-function sellAll(sym){
-  let st=stocks[sym]; if(st.shares<=0)return; cash+=st.shares*st.price; st.shares=0;
-  showMsg(`Sold ALL ${sym}`);
-  render();
-}
-function toggleGraph(sym){stocks[sym].show=!stocks[sym].show;render()}
+function buy(sym){let amt=parseFloat(prompt("Enter USD amount to buy")); if(isNaN(amt)||amt<=0||amt>cash){showMsg("Invalid amount"); return} let st=stocks[sym]; let shares=amt/st.price; cash-=amt; st.shares+=shares; st.buyPrice=st.price; saveSession(); showMsg(`Bought ${shares.toFixed(3)} ${sym}`); render()}
+function buyAll(sym){if(cash<=0)return; let st=stocks[sym]; let shares=cash/st.price; st.shares+=shares; st.buyPrice=st.price; cash=0; saveSession(); showMsg(`Bought ALL ${sym}`); render()}
+function sell(sym){let qty=parseFloat(prompt("Enter shares to sell")); let st=stocks[sym]; if(isNaN(qty)||qty<=0||qty>st.shares){showMsg("Invalid share amount"); return} st.shares-=qty; cash+=qty*st.price; saveSession(); showMsg(`Sold ${qty.toFixed(3)} ${sym}`); render()}
+function sellAll(sym){let st=stocks[sym]; if(st.shares<=0)return; cash+=st.shares*st.price; st.shares=0; saveSession(); showMsg(`Sold ALL ${sym}`); render()}
+function toggleGraph(sym){stocks[sym].show=!stocks[sym].show; render()}
 
 ///////////////////// RENDER ////////////////////
 function render(){
   document.getElementById("cash").innerText=cash.toFixed(2);
-  // Portfolio value = cash + total stock value
-  let portfolio= cash;
-  for(const s in stocks){
-    portfolio+=stocks[s].shares*stocks[s].price;
-  }
-  document.getElementById("portfolioValue").innerText=portfolio.toFixed(2);
+  let portfolio=cash;
+  for(const s in stocks) portfolio += stocks[s].shares*stocks[s].price;
+  let portfolioEl=document.getElementById("portfolioValue");
+  let oldValue=parseFloat(portfolioEl.innerText);
+  portfolioEl.innerText=portfolio.toFixed(2);
+  portfolioEl.style.color=portfolio>oldValue?'lime':portfolio<oldValue?'red':'white';
+  setTimeout(()=>portfolioEl.style.color='white',400);
 
   let out="";
   for(const s in stocks){
     let st=stocks[s];
-    let pl=st.shares*(st.price - (st.buyPrice||st.price));
-    let plClass= pl>=0 ? 'profit':'loss';
-    let plText= st.shares>0 ? `<span class="${plClass}">${pl>=0?'+':''}${pl.toFixed(2)}</span>` : '';
-    out+=`<div class="stock"><strong>${s}</strong> — $${st.price}<br>
-    Shares: ${st.shares.toFixed(3)} | P/L: ${plText}<br>
-    <button class="buy" onclick="buy('${s}')">Buy</button>
-    <button class="buy" onclick="buyAll('${s}')">Buy All</button>
-    <button class="sell" onclick="sell('${s}')">Sell</button>
-    <button class="sell" onclick="sellAll('${s}')">Sell All</button>
-    <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
-    <canvas id="g-${s}" width="800" height="140" style="display:${st.show?'block':'none'}"></canvas>
+    let avg=(st.history.reduce((a,b)=>a+b,0)/st.history.length).toFixed(2);
+    let pl=st.shares*(st.price-(st.buyPrice||st.price));
+    let plClass=pl>=0?'profit':'loss';
+    let plText=st.shares>0?`<span class="${plClass}">${pl>=0?'+':''}${pl.toFixed(2)}</span>`:'';
+    let lastPrice=st.history[st.history.length-2]||st.price;
+    let color = st.price>lastPrice?'lime':st.price<lastPrice?'red':'white';
+    out+=`<div class="stock" title="Min:${Math.min(...st.history)}, Max:${Math.max(...st.history)}, Avg:${avg}">
+      <strong>${s}</strong> — <span style="color:${color}">$${st.price}</span><br>
+      Shares: ${st.shares.toFixed(3)} | P/L: ${plText}<br>
+      <button class="buy" onclick="buy('${s}')">Buy</button>
+      <button class="buy" onclick="buyAll('${s}')">Buy All</button>
+      <button class="sell" onclick="sell('${s}')">Sell</button>
+      <button class="sell" onclick="sellAll('${s}')">Sell All</button>
+      <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
+      <canvas id="g-${s}" width="800" height="140" style="display:${st.show?'block':'none'}"></canvas>
     </div>`;
   }
   document.getElementById("stocks").innerHTML=out;
@@ -175,14 +148,31 @@ function drawGraph(sym){
   let c=document.getElementById("g-"+sym), ctx=c.getContext("2d"), data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
   let min=Math.min(...data), max=Math.max(...data);
-  ctx.strokeStyle="white"; ctx.lineWidth=2; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.beginPath();
-  data.forEach((p,i)=>{let x=i/(data.length-1)*c.width, y=c.height-(p-min)/(max-min+0.01)*c.height; i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
-  ctx.stroke();
-  let gradient=ctx.createLinearGradient(0,0,0,c.height); gradient.addColorStop(0,"rgba(255,255,255,0.3)"); gradient.addColorStop(1,"rgba(255,255,255,0)"); ctx.fillStyle=gradient; ctx.lineTo(c.width,c.height); ctx.lineTo(0,c.height); ctx.fill();
-  if(stocks[sym].buyPrice){let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height; ctx.strokeStyle="lime"; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(c.width,y); ctx.stroke()}
+  ctx.beginPath();
+  data.forEach((p,i)=>{let x=i/(data.length-1)*c.width,y=c.height-(p-min)/(max-min+0.01)*c.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke();
+  // shaded area
+  ctx.lineTo(c.width,c.height); ctx.lineTo(0,c.height); ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fill();
+  // latest price highlight
+  let lastY=c.height-(data[data.length-1]-min)/(max-min+0.01)*c.height;
+  ctx.beginPath(); ctx.arc(c.width,lastY,3,0,Math.PI*2); ctx.fillStyle='yellow'; ctx.fill();
+  if(stocks[sym].buyPrice){let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height; ctx.strokeStyle="lime"; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(c.width,y); ctx.stroke();}
 }
 
 function showMsg(t){document.getElementById("message").innerText=t}
+
+///////////////////// SESSION STORAGE ////////////////////
+function saveSession(){
+  localStorage.setItem('cash',cash);
+  for(const s in stocks) localStorage.setItem(s+'_shares',stocks[s].shares);
+}
+
+///////////////////// KEYBOARD SHORTCUTS ////////////////////
+document.addEventListener('keydown', e=>{
+  if(e.key==='1') buy('NOVA');
+  if(e.key==='2') buy('ORBX');
+  if(e.key==='3') buy('ZENT');
+});
 </script>
 </body>
 </html>
