@@ -5,9 +5,26 @@
 <title>WESTOCKS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Firebase -->
+<!-- FIREBASE (compat version for GitHub Pages) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcgWQyY9QewcZ5v1QLC6rRD9AWfqicKgQ",
+    authDomain: "westocks-5184b.firebaseapp.com",
+    databaseURL: "https://westocks-5184b-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "westocks-5184b",
+    storageBucket: "westocks-5184b.firebasestorage.app",
+    messagingSenderId: "265102905724",
+    appId: "1:265102905724:web:52c5c7365df3929a32d4f9",
+    measurementId: "G-RSMLRH5ZTL"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
 
 <style>
 html,body{
@@ -105,27 +122,13 @@ canvas{
 </div>
 
 <script>
-// ---------------- FIREBASE SETUP ----------------
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// ---------------- ACTIVE PLAYER COUNTER ----------------
 const userRef = db.ref('activePlayers');
-
-// Unique session ID
 const userId = Math.random().toString(36).substring(2) + Date.now();
 const myRef = userRef.child(userId);
 
 // Add self to database
-myRef.set(true).catch(err=>console.error("Firebase write failed:", err));
+myRef.set(true).catch(err => console.error(err));
 
 // Remove on leave
 window.addEventListener('beforeunload', () => myRef.remove());
@@ -156,7 +159,6 @@ function start(){
 function updatePrices(){
   for(const s in stocks){
     let st=stocks[s];
-    let oldPrice = st.price;
     let change=(Math.random()-0.5)*0.05;
     st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
