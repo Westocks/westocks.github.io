@@ -2,238 +2,228 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>WESTOCKS Demo</title>
+<title>WESTOCKS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 html,body{
-  margin:0;height:100%;overflow:hidden;
-  font-family:Arial,sans-serif;color:white
+  margin:0;height:100%;
+  font-family:Arial,sans-serif;
+  background:#0f2027;
+  color:white;
 }
 body{
   background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
   background-size:600% 600%;
-  animation:bgMove 18s ease infinite;
+  animation:bg 18s ease infinite;
 }
-@keyframes bgMove{
+@keyframes bg{
   0%{background-position:0% 50%}
   50%{background-position:100% 50%}
   100%{background-position:0% 50%}
 }
 
-.app{
-  height:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-
-.panel{
+.container{
+  max-width:1000px;
+  margin:20px auto;
   background:rgba(0,0,0,.45);
+  padding:20px;
   border-radius:16px;
-  padding:24px;
-  width:1000px;
-  max-height:95%;
-  overflow:auto;
 }
 
-h1{text-align:center;letter-spacing:4px;margin-top:0}
-.small{font-size:13px;opacity:.8}
+h1{text-align:center;letter-spacing:4px}
 
-button,input{
-  padding:8px 12px;
-  border-radius:8px;
+button{
+  padding:6px 12px;
   border:none;
+  border-radius:6px;
   font-weight:bold;
+  cursor:pointer;
 }
+.buy{background:white;color:black}
+.sell{background:#ffb3b3;color:black}
+.toggle{background:rgba(255,255,255,.2);color:white}
 
 .stock{
+  margin-top:16px;
+  padding:14px;
   background:rgba(255,255,255,.08);
   border-radius:12px;
-  padding:14px;
-  margin-top:14px;
-}
-
-.stock-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
 }
 
 canvas{
   width:100%;
   height:140px;
+  margin-top:8px;
   background:rgba(0,0,0,.3);
   border-radius:8px;
-  margin-top:10px;
+  display:none;
 }
 
-.controls{
-  margin-top:6px;
-  display:flex;
-  gap:6px;
+#message{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.9;
 }
 </style>
 </head>
 
 <body>
 
-<div class="app">
-<div class="panel">
+<div class="container">
+  <h1>WESTOCKS</h1>
 
-<h1>WESTOCKS</h1>
-
-<div id="startScreen">
-  <p class="small" style="text-align:center">
-    Demo only — not real money
-  </p>
-  <div style="text-align:center;margin-top:20px">
-    <button onclick="start()">Start Investing (Demo)</button>
-  </div>
-</div>
-
-<div id="market" style="display:none">
-  <div class="small">
-    Cash: $<span id="cash">1000.00</span>
+  <!-- START -->
+  <div id="start">
+    <p style="text-align:center">Demo only — not real money</p>
+    <div style="text-align:center">
+      <button class="buy" onclick="start()">Start Investing</button>
+    </div>
   </div>
 
-  <div id="stocks"></div>
-</div>
-
-</div>
+  <!-- MARKET -->
+  <div id="market" style="display:none">
+    <div>Cash: $<span id="cash">1000.00</span></div>
+    <div id="message"></div>
+    <div id="stocks"></div>
+  </div>
 </div>
 
 <script>
-let cash = 1000;
+let cash=1000;
 
-const stocks = {
-  NOVA:{price:120,history:[],shares:0,buyLines:[]},
-  ORBX:{price:75,history:[],shares:0,buyLines:[]},
-  ZENT:{price:200,history:[],shares:0,buyLines:[]}
+const stocks={
+  NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
+  ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
+  ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
 };
 
 function start(){
-  document.getElementById("startScreen").style.display="none";
+  document.getElementById("start").style.display="none";
   document.getElementById("market").style.display="block";
-  init();
-}
-
-function init(){
-  for(const s in stocks){
-    stocks[s].history=[stocks[s].price];
-  }
   render();
-  setInterval(updatePrices,2000);
 }
 
 function updatePrices(){
   for(const s in stocks){
-    const st=stocks[s];
-    const change=(Math.random()-0.5)*0.06;
-    st.price=Math.max(5,+(st.price*(1+change)).toFixed(2));
+    let st=stocks[s];
+    let change=(Math.random()-0.5)*0.05;
+    st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
     if(st.history.length>60)st.history.shift();
   }
-  drawAll();
+  render();
 }
+setInterval(updatePrices,2500);
 
 function buy(sym){
-  const input=document.getElementById("buy-"+sym);
-  const amt=parseFloat(input.value);
-  if(isNaN(amt)||amt<=0)return;
-  if(amt>cash)return;
-
-  const st=stocks[sym];
-  const shares=amt/st.price;
+  let amt=parseFloat(prompt("Enter USD amount to buy"));
+  if(isNaN(amt)||amt<=0||amt>cash){
+    showMsg("Invalid amount");
+    return;
+  }
+  let st=stocks[sym];
+  let shares=amt/st.price;
   cash-=amt;
   st.shares+=shares;
-  st.buyLines.push(st.price);
-  input.value="";
+  st.buyPrice=st.price;
+  showMsg(`Bought ${shares.toFixed(3)} ${sym}`);
+  render();
+}
+
+function buyAll(sym){
+  if(cash<=0)return;
+  let st=stocks[sym];
+  let shares=cash/st.price;
+  st.buyPrice=st.price;
+  st.shares+=shares;
+  showMsg(`Bought ALL ${sym}`);
+  cash=0;
   render();
 }
 
 function sell(sym){
-  const input=document.getElementById("sell-"+sym);
-  const qty=parseFloat(input.value);
-  if(isNaN(qty)||qty<=0)return;
-
-  const st=stocks[sym];
-  if(qty>st.shares)return;
-
+  let qty=parseFloat(prompt("Enter shares to sell"));
+  let st=stocks[sym];
+  if(isNaN(qty)||qty<=0||qty>st.shares){
+    showMsg("Invalid share amount");
+    return;
+  }
   st.shares-=qty;
   cash+=qty*st.price;
-  input.value="";
+  showMsg(`Sold ${qty.toFixed(3)} ${sym}`);
   render();
 }
 
-function render(){
-  document.getElementById("cash").innerText=cash.toFixed(2);
-  const wrap=document.getElementById("stocks");
-  wrap.innerHTML="";
-
-  for(const s in stocks){
-    wrap.innerHTML+=`
-      <div class="stock">
-        <div class="stock-header">
-          <div>
-            <strong>${s}</strong><br>
-            Price: $${stocks[s].price}<br>
-            Shares: ${stocks[s].shares.toFixed(3)}
-          </div>
-        </div>
-
-        <div class="controls">
-          <input id="buy-${s}" type="number" placeholder="Buy $">
-          <button onclick="buy('${s}')">Buy</button>
-          <input id="sell-${s}" type="number" placeholder="Sell shares">
-          <button onclick="sell('${s}')">Sell</button>
-        </div>
-
-        <canvas id="graph-${s}" width="900" height="140"></canvas>
-      </div>
-    `;
-  }
-  drawAll();
+function sellAll(sym){
+  let st=stocks[sym];
+  if(st.shares<=0)return;
+  cash+=st.shares*st.price;
+  st.shares=0;
+  showMsg(`Sold ALL ${sym}`);
+  render();
 }
 
-function drawAll(){
-  for(const s in stocks){
-    drawGraph(s);
-  }
+function toggleGraph(sym){
+  stocks[sym].show=!stocks[sym].show;
+  render();
 }
 
 function drawGraph(sym){
-  const c=document.getElementById("graph-"+sym);
-  if(!c)return;
-  const ctx=c.getContext("2d");
-  const data=stocks[sym].history;
-  const buys=stocks[sym].buyLines;
-
+  let c=document.getElementById("g-"+sym);
+  let ctx=c.getContext("2d");
+  let data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
-  if(data.length<2)return;
 
-  const min=Math.min(...data);
-  const max=Math.max(...data);
+  let min=Math.min(...data);
+  let max=Math.max(...data);
 
-  // price line
   ctx.strokeStyle="white";
   ctx.beginPath();
   data.forEach((p,i)=>{
-    const x=i/(data.length-1)*c.width;
-    const y=c.height-(p-min)/(max-min+0.01)*c.height;
+    let x=i/(data.length-1)*c.width;
+    let y=c.height-(p-min)/(max-min+0.01)*c.height;
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
 
-  // buy lines
-  ctx.strokeStyle="lime";
-  buys.forEach(price=>{
-    const y=c.height-(price-min)/(max-min+0.01)*c.height;
+  if(stocks[sym].buyPrice){
+    let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
+    ctx.strokeStyle="lime";
     ctx.beginPath();
     ctx.moveTo(0,y);
     ctx.lineTo(c.width,y);
     ctx.stroke();
-  });
+  }
+}
+
+function render(){
+  document.getElementById("cash").innerText=cash.toFixed(2);
+  let out="";
+  for(const s in stocks){
+    let st=stocks[s];
+    out+=`
+      <div class="stock">
+        <strong>${s}</strong> — $${st.price}<br>
+        Shares: ${st.shares.toFixed(3)}<br>
+        <button class="buy" onclick="buy('${s}')">Buy</button>
+        <button class="buy" onclick="buyAll('${s}')">Buy All</button>
+        <button class="sell" onclick="sell('${s}')">Sell</button>
+        <button class="sell" onclick="sellAll('${s}')">Sell All</button>
+        <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
+        <canvas id="g-${s}" width="800" height="140" style="display:${st.show?'block':'none'}"></canvas>
+      </div>
+    `;
+  }
+  document.getElementById("stocks").innerHTML=out;
+
+  for(const s in stocks){
+    if(stocks[s].show) drawGraph(s);
+  }
+}
+
+function showMsg(t){
+  document.getElementById("message").innerText=t;
 }
 </script>
 
