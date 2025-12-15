@@ -34,9 +34,8 @@ button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:po
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
-.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px}
-.canvas-container{width:100%;overflow-x:auto;} /* scrollable container */
-canvas{height:140px;background:rgba(0,0,0,.3);border-radius:8px;display:block;}
+.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px;position:relative;}
+canvas{width:100%;height:140px;background:rgba(0,0,0,.3);border-radius:8px;display:block;}
 #message{margin-top:10px;font-size:14px;opacity:.9}
 #activeCount{text-align:center;margin-bottom:10px;font-size:16px;opacity:.9}
 #portfolio{margin-top:10px;text-align:center;font-size:16px;opacity:.9}
@@ -44,6 +43,8 @@ canvas{height:140px;background:rgba(0,0,0,.3);border-radius:8px;display:block;}
 .loss{color:red;}
 @keyframes pulse{0%{transform:scale(1);opacity:0.8}50%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:0.8}}
 #activeCount.flash{animation:pulse 0.5s ease}
+#portfolioValue.flash{animation:pulse 0.5s ease}
+.tooltip{position:absolute;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:4px;font-size:12px;pointer-events:none;opacity:0;transition:0.2s;}
 </style>
 </head>
 <body>
@@ -87,6 +88,7 @@ const stocks = {
   ORBX:{price:80,shares:parseFloat(localStorage.getItem('ORBX_shares'))||0,history:[80],buyPrice:null,show:false},
   ZENT:{price:200,shares:parseFloat(localStorage.getItem('ZENT_shares'))||0,history:[200],buyPrice:null,show:false}
 };
+let portfolioHistory = JSON.parse(localStorage.getItem('portfolioHistory')) || [1000];
 
 function start(){document.getElementById("start").style.display="none";document.getElementById("market").style.display="block";render()}
 
@@ -98,6 +100,12 @@ function updatePrices(){
     st.history.push(st.price);
     if(st.history.length>200) st.history.shift();
   }
+  // Update portfolio history
+  let portfolio= cash;
+  for(const s in stocks) portfolio+=stocks[s].shares*stocks[s].price;
+  portfolioHistory.push(portfolio);
+  if(portfolioHistory.length>200) portfolioHistory.shift();
+  localStorage.setItem('portfolioHistory', JSON.stringify(portfolioHistory));
   render();
 }
 setInterval(updatePrices,2500);
@@ -117,8 +125,8 @@ function render(){
   let portfolioEl=document.getElementById("portfolioValue");
   let oldValue=parseFloat(portfolioEl.innerText);
   portfolioEl.innerText=portfolio.toFixed(2);
-  portfolioEl.style.color=portfolio>oldValue?'lime':portfolio<oldValue?'red':'white';
-  setTimeout(()=>portfolioEl.style.color='white',400);
+  portfolioEl.classList.add('flash');
+  setTimeout(()=>portfolioEl.classList.remove('flash'),400);
 
   let out="";
   for(const s in stocks){
@@ -129,7 +137,6 @@ function render(){
     let plText=st.shares>0?`<span class="${plClass}">${pl>=0?'+':''}${pl.toFixed(2)}</span>`:'';
     let lastPrice=st.history[st.history.length-2]||st.price;
     let color = st.price>lastPrice?'lime':st.price<lastPrice?'red':'white';
-    let canvasWidth = Math.max(800, st.history.length*12); // scrollable if long
     out+=`<div class="stock" title="Min:${Math.min(...st.history)}, Max:${Math.max(...st.history)}, Avg:${avg}">
       <strong>${s}</strong> — <span style="color:${color}">$${st.price}</span><br>
       Shares: ${st.shares.toFixed(3)} | P/L: ${plText}<br>
@@ -138,59 +145,36 @@ function render(){
       <button class="sell" onclick="sell('${s}')">Sell</button>
       <button class="sell" onclick="sellAll('${s}')">Sell All</button>
       <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
-      <div class="canvas-container"><canvas id="g-${s}" width="${canvasWidth}" height="140" style="display:${st.show?'block':'none'}"></canvas></div>
+      <canvas id="g-${s}" style="display:${st.show?'block':'none'}"></canvas>
     </div>`;
   }
+  // Add portfolio mini graph
+  out+=`<div class="stock"><strong>Portfolio History</strong><canvas id="portfolioGraph"></canvas></div>`;
   document.getElementById("stocks").innerHTML=out;
 
   for(const s in stocks) if(stocks[s].show) drawGraph(s);
+  drawPortfolioGraph();
 }
 
 ///////////////////// DRAW GRAPH WITH AXES ////////////////////
 function drawGraph(sym){
-  let c=document.getElementById("g-"+sym), ctx=c.getContext("2d"), data=stocks[sym].history;
+  let c=document.getElementById("g-"+sym);
+  c.width = c.parentElement.clientWidth;
+  c.height = 140;
+  let ctx=c.getContext("2d"), data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
-  
   let min=Math.min(...data), max=Math.max(...data);
-  
-  // Y-axis
-  ctx.strokeStyle='white';
-  ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(40,0);
-  ctx.lineTo(40,c.height);
-  ctx.stroke();
-  
-  // X-axis
-  ctx.beginPath();
-  ctx.moveTo(40,c.height-20);
-  ctx.lineTo(c.width,c.height-20);
-  ctx.stroke();
-  
-  ctx.fillStyle='white';
-  ctx.font='12px Arial';
-  ctx.textAlign='right';
-  
-  // Y labels & grid
-  for(let i=0;i<=5;i++){
-    let y = i*(c.height-30)/5;
-    let price = (max - i*(max-min)/5).toFixed(2);
-    ctx.fillText(price,35,y+5);
-    ctx.beginPath();
-    ctx.moveTo(40,y);
-    ctx.lineTo(c.width,y);
-    ctx.strokeStyle='rgba(255,255,255,0.1)';
-    ctx.stroke();
+
+  // Draw profit/loss shaded area
+  if(stocks[sym].buyPrice){
+    let yBuy = (c.height-20) - (stocks[sym].buyPrice-min)/(max-min+0.01)*(c.height-30);
+    ctx.fillStyle='rgba(0,255,0,0.1)';
+    ctx.fillRect(40,0,c.width-40,yBuy);
+    ctx.fillStyle='rgba(255,0,0,0.1)';
+    ctx.fillRect(40,yBuy,c.width-40,c.height-yBuy-20);
   }
-  
-  // X labels
-  ctx.textAlign='center';
-  for(let i=0;i<data.length;i+=10){
-    let x = 40 + (i/(data.length-1))*(c.width-40);
-    ctx.fillText(i,x,c.height-5);
-  }
-  
-  // Stock line
+
+  // Draw line
   ctx.strokeStyle='white';
   ctx.lineWidth=2;
   ctx.beginPath();
@@ -200,21 +184,33 @@ function drawGraph(sym){
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
-  
-  // Shaded area
-  ctx.lineTo(c.width,c.height-20); ctx.lineTo(40,c.height-20);
-  ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fill();
-  
-  // Latest price
-  let lastY = (c.height-20) - (data[data.length-1]-min)/(max-min+0.01)*(c.height-30);
-  ctx.beginPath(); ctx.arc(c.width,lastY,3,0,Math.PI*2); ctx.fillStyle='yellow'; ctx.fill();
-  
-  // Buy price line
-  if(stocks[sym].buyPrice){
-    let y = (c.height-20) - (stocks[sym].buyPrice-min)/(max-min+0.01)*(c.height-30);
-    ctx.strokeStyle="lime";
-    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(c.width,y); ctx.stroke();
-  }
+
+  // Min/max dots
+  let minIndex = data.indexOf(min), maxIndex=data.indexOf(max);
+  let minX = 40 + (minIndex/(data.length-1))*(c.width-40);
+  let maxX = 40 + (maxIndex/(data.length-1))*(c.width-40);
+  ctx.fillStyle='yellow';
+  ctx.beginPath(); ctx.arc(minX,(c.height-20)-(min-min)/(max-min+0.01)*(c.height-30),3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(maxX,(c.height-20)-(max-min)/(max-min+0.01)*(c.height-30),3,0,Math.PI*2); ctx.fill();
+}
+
+///////////////////// PORTFOLIO GRAPH ////////////////////
+function drawPortfolioGraph(){
+  let c=document.getElementById("portfolioGraph");
+  c.width = c.parentElement.clientWidth;
+  c.height = 140;
+  let ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  let data = portfolioHistory;
+  let min=Math.min(...data), max=Math.max(...data);
+  ctx.strokeStyle='cyan'; ctx.lineWidth=2;
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    let x = 40 + (i/(data.length-1))*(c.width-40);
+    let y = (c.height-20) - (v-min)/(max-min+0.01)*(c.height-30);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
 }
 
 function showMsg(t){document.getElementById("message").innerText=t}
@@ -223,6 +219,7 @@ function showMsg(t){document.getElementById("message").innerText=t}
 function saveSession(){
   localStorage.setItem('cash',cash);
   for(const s in stocks) localStorage.setItem(s+'_shares',stocks[s].shares);
+  localStorage.setItem('portfolioHistory', JSON.stringify(portfolioHistory));
 }
 
 ///////////////////// KEYBOARD SHORTCUTS ////////////////////
@@ -230,6 +227,9 @@ document.addEventListener('keydown', e=>{
   if(e.key==='1') buy('NOVA');
   if(e.key==='2') buy('ORBX');
   if(e.key==='3') buy('ZENT');
+  if(e.shiftKey && e.key==='1') sellAll('NOVA');
+  if(e.shiftKey && e.key==='2') sellAll('ORBX');
+  if(e.shiftKey && e.key==='3') sellAll('ZENT');
 });
 </script>
 </body>
