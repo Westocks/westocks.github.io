@@ -35,8 +35,8 @@ button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:po
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
 .stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px}
-.canvas-container{overflow-x:auto;}
-canvas{height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:block;}
+.canvas-container{width:100%;overflow-x:auto;} /* scrollable container */
+canvas{height:140px;background:rgba(0,0,0,.3);border-radius:8px;display:block;}
 #message{margin-top:10px;font-size:14px;opacity:.9}
 #activeCount{text-align:center;margin-bottom:10px;font-size:16px;opacity:.9}
 #portfolio{margin-top:10px;text-align:center;font-size:16px;opacity:.9}
@@ -138,7 +138,7 @@ function render(){
       <button class="sell" onclick="sell('${s}')">Sell</button>
       <button class="sell" onclick="sellAll('${s}')">Sell All</button>
       <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
-      <div class="canvas-container" style="width:100%;"><canvas id="g-${s}" width="${canvasWidth}" height="140" style="display:${st.show?'block':'none'}"></canvas></div>
+      <div class="canvas-container"><canvas id="g-${s}" width="${canvasWidth}" height="140" style="display:${st.show?'block':'none'}"></canvas></div>
     </div>`;
   }
   document.getElementById("stocks").innerHTML=out;
@@ -234,4 +234,3 @@ document.addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
-
