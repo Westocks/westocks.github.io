@@ -148,23 +148,22 @@ activeRef.on("value",s=>{
   activeEl.innerText="Active Players: "+s.numChildren();
 });
 
-/* DATA — UNCHANGED STRUCTURE */
+/* DATA */
 let cash=1000;
-
 const stocks={
   NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
   ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
   ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
 };
 
-/* START */
+/* START BUTTON */
 startBtn.onclick=()=>{
   start.style.display="none";
   market.style.display="block";
   render();
 };
 
-/* PRICE UPDATE — SAME LOGIC */
+/* PRICE UPDATE */
 setInterval(()=>{
   for(const s in stocks){
     let st=stocks[s];
@@ -176,7 +175,7 @@ setInterval(()=>{
   render();
 },2500);
 
-/* BUY / SELL — SAME AS ORIGINAL */
+/* BUY / SELL */
 window.buy=function(sym){
   let amt=parseFloat(document.getElementById("buy-"+sym).value);
   if(isNaN(amt)||amt<=0||amt>cash)return;
@@ -184,7 +183,7 @@ window.buy=function(sym){
   let shares=amt/st.price;
   cash-=amt;
   st.shares+=shares;
-  st.buyPrice=st.price;
+  st.buyPrice=st.price; // <-- BUY PRICE LINE
   render();
 };
 
@@ -197,13 +196,13 @@ window.sell=function(sym){
   render();
 };
 
-/* TOGGLE GRAPH — SAME */
+/* TOGGLE GRAPH */
 window.toggleGraph=function(sym){
   stocks[sym].show=!stocks[sym].show;
   render();
 };
 
-/* ===== GRAPH CODE — 100% UNCHANGED ===== */
+/* DRAW GRAPH — ORIGINAL STYLE WITH BUY LINE */
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym);
   let ctx=c.getContext("2d");
@@ -222,6 +221,7 @@ function drawGraph(sym){
   });
   ctx.stroke();
 
+  // Draw buy price line
   if(stocks[sym].buyPrice){
     let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.strokeStyle="lime";
@@ -231,7 +231,6 @@ function drawGraph(sym){
     ctx.stroke();
   }
 }
-/* ===================================== */
 
 /* RENDER */
 function render(){
@@ -249,18 +248,19 @@ function render(){
       <strong>${s}</strong> — $${st.price}<br>
       Shares: ${st.shares.toFixed(3)}<br>
 
+      Buy $ <input id="buy-${s}" type="number">
       <button class="buy" onclick="buy('${s}')">Buy</button>
+
+      Sell <input id="sell-${s}" type="number" step="0.01">
       <button class="sell" onclick="sell('${s}')">Sell</button>
+
       <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
 
-      <canvas id="g-${s}" width="800" height="140"
-        style="display:${st.show?'block':'none'}"></canvas>
+      <canvas id="g-${s}" width="800" height="140" style="display:${st.show?'block':'none'}"></canvas>
     </div>`;
   }).join("");
 
-  for(const s in stocks){
-    if(stocks[s].show) drawGraph(s);
-  }
+  for(const s in stocks)if(stocks[s].show)drawGraph(s);
 }
 
 /* LEADERBOARD */
