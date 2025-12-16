@@ -1,57 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>WESTOCKS</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<style>
-html,body{margin:0;height:100%;font-family:Arial,sans-serif;color:white;}
-body{display:flex;justify-content:center;align-items:center;background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);background-size:600% 600%;animation:bg 18s ease infinite;}
-@keyframes bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.container{max-width:1000px;width:100%;background:rgba(0,0,0,.45);padding:20px;border-radius:16px;}
-h1{text-align:center;letter-spacing:4px;}
-button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;}
-.buy{background:white;color:black;}
-.sell{background:#ffb3b3;color:black;}
-.toggle{background:rgba(255,255,255,.2);color:white;}
-.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px;}
-canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none;}
-input{width:80px;padding:4px;border-radius:4px;border:none;}
-#active{text-align:center;margin-bottom:6px;}
-.pl{color:cyan;font-weight:bold;}
-</style>
-</head>
-
-<body>
-<div class="container">
-<h1>WESTOCKS</h1>
-<div id="active">Active Players: 0</div>
-
-<div id="start">
-  <p style="text-align:center">Demo only — not real money</p>
-  <div style="text-align:center">
-    <button class="buy" id="startBtn">Start Investing</button>
-  </div>
-</div>
-
-<div id="market" style="display:none">
-  Cash: $<span id="cash">1000.00</span><br>
-  Portfolio: $<span id="portfolio">1000.00</span>
-
-  <div class="stock">
-    <strong>🏆 Leaderboard</strong>
-    <ol id="leaderboard"></ol>
-  </div>
-
-  <div id="stocks"></div>
-</div>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
 
@@ -121,7 +67,7 @@ setInterval(()=>{
   render();
 },2500);
 
-/* BUY / SELL FUNCTIONS */
+/* BUY / SELL */
 window.buy=function(sym){
   let amt=parseFloat(document.getElementById("buy-"+sym).value);
   if(!amt||amt>cash) return;
@@ -134,8 +80,7 @@ window.buy=function(sym){
 };
 window.buyAll=function(sym){
   let st=stocks[sym];
-  let shares=cash/st.price;
-  st.shares+=shares;
+  st.shares+=cash/st.price;
   st.buyPrice=st.price;
   cash=0;
   render();
@@ -155,13 +100,13 @@ window.sellAll=function(sym){
   render();
 };
 
-/* TOGGLE GRAPH */
+/* GRAPH TOGGLE */
 window.toggleGraph=function(sym){
   stocks[sym].show=!stocks[sym].show;
   render();
 };
 
-/* DRAW NEON GRAPH */
+/* GRAPH DRAW */
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym);
   let ctx=c.getContext("2d");
@@ -170,7 +115,6 @@ function drawGraph(sym){
   let min=Math.min(...data);
   let max=Math.max(...data);
 
-  // neon line
   ctx.lineWidth=2;
   ctx.shadowBlur=8;
   ctx.shadowColor="cyan";
@@ -183,7 +127,6 @@ function drawGraph(sym){
   });
   ctx.stroke();
 
-  // buy price line
   if(stocks[sym].buyPrice){
     let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.shadowBlur=12;
@@ -195,15 +138,18 @@ function drawGraph(sym){
   }
 }
 
-/* RENDER FUNCTION */
+/* RENDER */
 function render(){
   cashEl.innerText=cash.toFixed(2);
   let total=cash;
   for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
-  // update leaderboard
-  leaderboardRef.child(sessionId).set({name:username,value:total});
+  // update leaderboard value
+  leaderboardRef.child(sessionId).set({
+    name: username,
+    value: total
+  });
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
@@ -230,15 +176,18 @@ function render(){
   for(const s in stocks) if(stocks[s].show) drawGraph(s);
 }
 
-/* LEADERBOARD LISTENER */
+/* ✅ LEADERBOARD — RICHEST FIRST */
 leaderboardRef.on("value", snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
-  arr.sort((a,b)=>b.value-b.value);
-  leaderboardEl.innerHTML=arr.slice(0,10).map(p=>`<li>${p.name}: $${p.value.toFixed(2)}</li>`).join("");
+
+  arr.sort((a,b)=>b.value-a.value); // richest → poorest
+
+  leaderboardEl.innerHTML = arr
+    .slice(0,10)
+    .map((p,i)=>`<li>#${i+1} ${p.name}: $${p.value.toFixed(2)}</li>`)
+    .join("");
 });
 
 });
 </script>
-</body>
-</html>
