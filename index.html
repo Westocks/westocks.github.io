@@ -24,20 +24,40 @@ const db = firebase.database();
 
 <style>
 html,body{margin:0;height:100%;font-family:Arial;color:white}
-body{display:flex;justify-content:center;align-items:center;
-background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
-background-size:600% 600%;animation:bg 18s ease infinite}
-@keyframes bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.container{max-width:1000px;width:100%;background:rgba(0,0,0,.45);
-padding:20px;border-radius:16px}
+body{
+  display:flex;justify-content:center;align-items:center;
+  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
+  background-size:600% 600%;
+  animation:bg 18s ease infinite
+}
+@keyframes bg{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+.container{
+  max-width:1000px;width:100%;
+  background:rgba(0,0,0,.45);
+  padding:20px;border-radius:16px
+}
 h1{text-align:center;letter-spacing:4px}
-button{padding:6px 10px;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
+button{
+  padding:6px 10px;border:none;border-radius:6px;
+  font-weight:bold;cursor:pointer
+}
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
-.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);
-border-radius:12px}
-canvas{width:100%;height:140px;background:rgba(0,0,0,.3);border-radius:8px}
+.stock{
+  margin-top:16px;padding:14px;
+  background:rgba(255,255,255,.08);
+  border-radius:12px
+}
+canvas{
+  width:100%;height:140px;
+  background:rgba(0,0,0,.3);
+  border-radius:8px
+}
 input{width:80px;padding:4px;border-radius:4px;border:none}
 .profit{color:lime}
 .loss{color:red}
@@ -54,22 +74,24 @@ ol{padding-left:20px}
 
 <div id="activeCount">Active Players: 0</div>
 
-<div id="start" style="text-align:center">
-<p>Demo only — not real money</p>
-<button class="buy" onclick="start()">Start Investing</button>
+<div id="start">
+  <p style="text-align:center">Demo only — not real money</p>
+  <div style="text-align:center">
+    <button class="buy" onclick="startGame()">Start Investing</button>
+  </div>
 </div>
 
 <div id="market" style="display:none">
-Cash: $<span id="cash">1000.00</span><br>
-Portfolio: $<span id="portfolioValue">1000.00</span>
+  Cash: $<span id="cash">1000.00</span><br>
+  Portfolio: $<span id="portfolioValue">1000.00</span>
 
-<div class="stock">
-<strong>🏆 Leaderboard</strong>
-<ol id="leaderboard"></ol>
-</div>
+  <div class="stock">
+    <strong>🏆 Leaderboard</strong>
+    <ol id="leaderboard"></ol>
+  </div>
 
-<div id="message"></div>
-<div id="stocks"></div>
+  <div id="message"></div>
+  <div id="stocks"></div>
 </div>
 </div>
 
@@ -81,22 +103,22 @@ if(!username){
   localStorage.setItem("username", username);
 }
 
-/* FIREBASE REFS */
+/* FIREBASE */
 const playersRef = db.ref("activePlayers");
 const leaderboardRef = db.ref("leaderboard");
 
 /* ACTIVE PLAYER */
-const id = Math.random().toString(36).slice(2);
-playersRef.child(id).set(true);
+const playerId = Math.random().toString(36).slice(2);
+playersRef.child(playerId).set(true);
 window.addEventListener("beforeunload",()=>{
-  playersRef.child(id).remove();
-  leaderboardRef.child(id).remove();
+  playersRef.child(playerId).remove();
+  leaderboardRef.child(playerId).remove();
 });
 playersRef.on("value",s=>{
   activeCount.innerText="Active Players: "+s.numChildren();
 });
 
-/* DATA */
+/* GAME DATA */
 let cash = +localStorage.getItem("cash") || 1000;
 const stocks={
   NOVA:{price:120,shares:+localStorage.getItem("NOVA")||0,history:[120],show:false},
@@ -104,9 +126,10 @@ const stocks={
   ZENT:{price:200,shares:+localStorage.getItem("ZENT")||0,history:[200],show:false}
 };
 
-function start(){
-  start.style.display="none";
-  market.style.display="block";
+/* START */
+function startGame(){
+  document.getElementById("start").style.display="none";
+  document.getElementById("market").style.display="block";
   render();
 }
 
@@ -141,12 +164,14 @@ function sell(sym){
 /* RENDER */
 function render(){
   cashSpan.innerText=cash.toFixed(2);
-
   let total=cash;
   for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioValue.innerText=total.toFixed(2);
 
-  leaderboardRef.child(id).set({name:username,value:total});
+  leaderboardRef.child(playerId).set({
+    name:username,
+    value:total
+  });
 
   let html="";
   for(const s in stocks){
@@ -164,7 +189,7 @@ function render(){
       Sell <input id="sell-${s}" type="number" step="0.01">
       <button class="sell" onclick="sell('${s}')">Sell</button>
 
-      <button class="toggle" onclick="st.show=!st.show;render()">Graph</button>
+      <button class="toggle" onclick="stocks['${s}'].show=!stocks['${s}'].show;render()">Graph</button>
       ${st.show?`<canvas id="g-${s}"></canvas>`:""}
     </div>`;
   }
@@ -189,17 +214,16 @@ function drawGraph(sym){
   ctx.stroke();
 }
 
-/* LEADERBOARD LISTENER */
+/* LEADERBOARD */
 leaderboardRef.on("value",snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
   arr.sort((a,b)=>b.value-a.value);
-  leaderboard.innerHTML=arr.slice(0,10).map((p,i)=>
-    `<li class="${p.name===username?'me':''}">
+  leaderboard.innerHTML=arr.slice(0,10).map((p,i)=>`
+    <li class="${p.name===username?'me':''}">
       ${i==0?'🥇':i==1?'🥈':i==2?'🥉':''}
       ${p.name}: $${p.value.toFixed(2)}
-    </li>`
-  ).join("");
+    </li>`).join("");
 });
 
 /* HELPERS */
