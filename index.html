@@ -105,18 +105,16 @@ if(!username){
 }
 
 /* FIREBASE REFS */
-const id=Math.random().toString(36).slice(2);
 const activeRef=db.ref("activePlayers");
-const leaderRef=db.ref("leaderboard");
+const leaderboardRef=db.ref("leaderboard");
 
-/* ACTIVE PLAYER */
-activeRef.child(id).set(true);
-window.addEventListener("beforeunload",()=>{
-  activeRef.child(id).remove();
-  leaderRef.child(id).remove();
-});
-activeRef.on("value",s=>{
-  activeEl.innerText="Active Players: "+s.numChildren();
+/* REGISTER ACTIVE PLAYER */
+activeRef.child(username).set(true);
+activeRef.child(username).onDisconnect().remove();
+leaderboardRef.child(username).onDisconnect().remove();
+
+activeRef.on("value",snap=>{
+  activeEl.innerText="Active Players: "+snap.numChildren();
 });
 
 /* DATA */
@@ -186,7 +184,7 @@ window.toggleGraph=function(sym){
   render();
 };
 
-/* DRAW GRAPH NEON STYLE */
+/* DRAW GRAPH NEON */
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym);
   let ctx=c.getContext("2d");
@@ -196,7 +194,6 @@ function drawGraph(sym){
   let min=Math.min(...data);
   let max=Math.max(...data);
 
-  // Neon line effect
   ctx.lineWidth=2;
   ctx.shadowBlur=8;
   ctx.shadowColor="cyan";
@@ -228,7 +225,7 @@ function render(){
   for(const s in stocks)total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
-  leaderRef.child(id).set({name:username,value:total});
+  leaderboardRef.child(username).set({name:username,value:total});
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
@@ -236,8 +233,7 @@ function render(){
     return`
     <div class="stock">
       <strong>${s}</strong> — $${st.price}<br>
-      Shares: ${st.shares.toFixed(3)} 
-      <span class="pl">PL: $${pl}</span><br><br>
+      Shares: ${st.shares.toFixed(3)} <span class="pl">PL: $${pl}</span><br><br>
 
       Buy $ <input id="buy-${s}" type="number">
       <button class="buy" onclick="buy('${s}')">Buy</button>
@@ -257,13 +253,12 @@ function render(){
 }
 
 /* LEADERBOARD */
-leaderRef.on("value",snap=>{
+leaderboardRef.on("value",snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
-  arr.sort((a,b)=>b.value-a.value);
-  leaderboardEl.innerHTML=arr.slice(0,10).map(p=>
-    `<li>${p.name}: $${p.value.toFixed(2)}</li>`
-  ).join("");
+  arr.sort((a,b)=>b.value - a.value);
+  leaderboardEl.innerHTML = arr.slice(0,10)
+    .map(p => `<li>${p.name}: $${p.value.toFixed(2)}</li>`).join("");
 });
 
 });
