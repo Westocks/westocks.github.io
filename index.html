@@ -10,26 +10,52 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
-html,body{margin:0;height:100%;font-family:Arial,sans-serif;color:white;}
-body{
-  display:flex;justify-content:center;align-items:center;
-  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
-  background-size:600% 600%;animation:bg 18s ease infinite;
+html,body{
+  margin:0;height:100%;
+  font-family:Arial,sans-serif;
+  color:white;
 }
-@keyframes bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-
-.container{max-width:1000px;width:100%;background:rgba(0,0,0,.45);padding:20px;border-radius:16px;}
-h1{text-align:center;letter-spacing:4px;}
-button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;}
+body{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
+  background-size:600% 600%;
+  animation:bg 18s ease infinite;
+}
+@keyframes bg{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+.container{
+  max-width:1000px;width:100%;
+  background:rgba(0,0,0,.45);
+  padding:20px;border-radius:16px;
+}
+h1{text-align:center;letter-spacing:4px}
+button{
+  padding:6px 12px;border:none;
+  border-radius:6px;font-weight:bold;
+  cursor:pointer;
+}
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
-
-.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px;}
-canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none;}
-input{width:80px;padding:4px;border-radius:4px;border:none;}
-
-#active{text-align:center;margin-bottom:6px}
+.stock{
+  margin-top:16px;padding:14px;
+  background:rgba(255,255,255,.08);
+  border-radius:12px;
+}
+canvas{
+  width:100%;height:140px;
+  margin-top:8px;
+  background:rgba(0,0,0,.3);
+  border-radius:8px;
+  display:none;
+}
+input{width:80px;padding:4px;border-radius:4px;border:none}
+#active{text-align:center;margin-bottom:8px}
 .pl{color:cyan;font-weight:bold}
 #leaderboardBox{display:none}
 </style>
@@ -65,7 +91,7 @@ input{width:80px;padding:4px;border-radius:4px;border:none;}
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
 
-/* 🔥 FIREBASE INIT */
+/* 🔥 FIREBASE */
 firebase.initializeApp({
   apiKey: "AIzaSyDcgWQyY9QewcZ5v1QLC6rRD9AWfqicKgQ",
   authDomain: "westocks-5184b.firebaseapp.com",
@@ -75,46 +101,45 @@ firebase.initializeApp({
   messagingSenderId: "265102905724",
   appId: "1:265102905724:web:52c5c7365df3929a32d4f9"
 });
-const db=firebase.database();
+const db = firebase.database();
 
 /* USER */
-const username=prompt("Username")||"Guest"+Math.floor(Math.random()*1000);
-const sessionId=Math.random().toString(36).slice(2);
+const username = prompt("Username") || "Guest"+Math.floor(Math.random()*1000);
+const sessionId = Math.random().toString(36).slice(2);
 
 /* REFS */
-const activeRef=db.ref("activePlayers");
-const leaderboardRef=db.ref("leaderboard");
+const activeRef = db.ref("activePlayers");
+const leaderboardRef = db.ref("leaderboard");
 
 /* ACTIVE PLAYERS */
 activeRef.child(sessionId).set({name:username});
 activeRef.child(sessionId).onDisconnect().remove();
-
 activeRef.on("value",s=>{
-  document.getElementById("active").innerText=
+  document.getElementById("active").innerText =
     "Active Players: "+s.numChildren();
 });
 
-/* LEADERBOARD LISTENER (GLOBAL) */
+/* LEADERBOARD */
 leaderboardRef.on("value",snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
   arr.sort((a,b)=>b.value-a.value);
-  document.getElementById("leaderboard").innerHTML=
+  document.getElementById("leaderboard").innerHTML =
     arr.slice(0,10)
       .map(p=>`<li>${p.name}: $${p.value.toFixed(2)}</li>`)
       .join("");
 });
 
-/* UI */
-const startBtn=startBtn=document.getElementById("startBtn");
-const start=document.getElementById("start");
-const market=document.getElementById("market");
-const cashEl=document.getElementById("cash");
-const portfolioEl=document.getElementById("portfolio");
-const stocksEl=document.getElementById("stocks");
-const leaderboardBox=document.getElementById("leaderboardBox");
+/* ELEMENTS */
+const startBtn = document.getElementById("startBtn");
+const start = document.getElementById("start");
+const market = document.getElementById("market");
+const cashEl = document.getElementById("cash");
+const portfolioEl = document.getElementById("portfolio");
+const stocksEl = document.getElementById("stocks");
+const leaderboardBox = document.getElementById("leaderboardBox");
 
-/* GAME */
+/* GAME DATA */
 let cash=1000;
 const stocks={
   NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
@@ -122,7 +147,7 @@ const stocks={
   ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
 };
 
-/* START */
+/* START BUTTON (FIXED) */
 startBtn.onclick=()=>{
   start.style.display="none";
   market.style.display="block";
@@ -171,21 +196,20 @@ window.sellAll=s=>{
   st.shares=0;render();
 };
 
-/* GRAPH TOGGLE */
+/* TOGGLES */
 window.toggleGraph=s=>{
   stocks[s].show=!stocks[s].show;
   render();
 };
-
-/* LEADERBOARD TOGGLE */
 window.toggleLeaderboard=()=>{
-  leaderboardBox.style.display=
+  leaderboardBox.style.display =
     leaderboardBox.style.display==="none"?"block":"none";
 };
 
 /* DRAW GRAPH */
 function drawGraph(s){
-  let c=document.getElementById("g-"+s),ctx=c.getContext("2d");
+  let c=document.getElementById("g-"+s);
+  let ctx=c.getContext("2d");
   let d=stocks[s].history;
   let min=Math.min(...d),max=Math.max(...d);
   ctx.clearRect(0,0,c.width,c.height);
@@ -199,8 +223,11 @@ function drawGraph(s){
   ctx.stroke();
   if(stocks[s].buyPrice){
     let y=c.height-(stocks[s].buyPrice-min)/(max-min+0.01)*c.height;
-    ctx.strokeStyle="lime";ctx.beginPath();
-    ctx.moveTo(0,y);ctx.lineTo(c.width,y);ctx.stroke();
+    ctx.strokeStyle="lime";
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(c.width,y);
+    ctx.stroke();
   }
 }
 
@@ -211,7 +238,8 @@ function render(){
   for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
-  leaderboardRef.child(sessionId).set({name:username,value:total});
+  leaderboardRef.child(sessionId)
+    .set({name:username,value:total});
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
