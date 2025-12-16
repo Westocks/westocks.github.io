@@ -10,40 +10,20 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
-html,body{
-  margin:0;height:100%;
-  font-family:Arial,sans-serif;color:white;
-}
-body{
-  display:flex;justify-content:center;align-items:center;
-  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
-  background-size:600% 600%;
-  animation:bg 18s ease infinite;
-}
-@keyframes bg{
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
-.container{
-  max-width:1000px;width:100%;
-  background:rgba(0,0,0,.45);
-  padding:20px;border-radius:16px;
-}
-h1{text-align:center;letter-spacing:4px}
+html,body{margin:0;height:100%;font-family:Arial,sans-serif;color:white;}
+body{display:flex;justify-content:center;align-items:center;background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);background-size:600% 600%;animation:bg 18s ease infinite;}
+@keyframes bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.container{max-width:1000px;width:100%;background:rgba(0,0,0,.45);padding:20px;border-radius:16px;}
+h1{text-align:center;letter-spacing:4px;}
 button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;}
-.buy{background:white;color:black}
-.sell{background:#ffb3b3;color:black}
-.toggle{background:rgba(255,255,255,.2);color:white}
-.stock{
-  margin-top:16px;padding:14px;
-  background:rgba(255,255,255,.08);
-  border-radius:12px
-}
-canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none}
-input{width:80px;padding:4px;border-radius:4px;border:none}
-#active{text-align:center;margin-bottom:6px}
-.pl{color:cyan;font-weight:bold}
+.buy{background:white;color:black;}
+.sell{background:#ffb3b3;color:black;}
+.toggle{background:rgba(255,255,255,.2);color:white;}
+.stock{margin-top:16px;padding:14px;background:rgba(255,255,255,.08);border-radius:12px;}
+canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none;}
+input{width:80px;padding:4px;border-radius:4px;border:none;}
+#active{text-align:center;margin-bottom:6px;}
+.pl{color:cyan;font-weight:bold;}
 </style>
 </head>
 
@@ -97,27 +77,24 @@ const stocksEl=document.getElementById("stocks");
 const leaderboardEl=document.getElementById("leaderboard");
 const activeEl=document.getElementById("active");
 
-/* USERNAME */
-let username=localStorage.getItem("username");
-if(!username){
-  username=prompt("Choose a username")||"Guest"+Math.floor(Math.random()*1000);
-  localStorage.setItem("username",username);
-}
+/* USER INFO */
+const username = prompt("Enter username") || "Guest" + Math.floor(Math.random()*1000);
+const sessionId = Math.random().toString(36).slice(2);
 
 /* FIREBASE REFS */
-const activeRef=db.ref("activePlayers");
-const leaderboardRef=db.ref("leaderboard");
+const activeRef = db.ref("activePlayers");
+const leaderboardRef = db.ref("leaderboard");
 
-/* REGISTER ACTIVE PLAYER */
-activeRef.child(username).set(true);
-activeRef.child(username).onDisconnect().remove();
-leaderboardRef.child(username).onDisconnect().remove();
+/* ADD ACTIVE PLAYER */
+activeRef.child(sessionId).set({name: username});
+activeRef.child(sessionId).onDisconnect().remove();
 
+/* LISTEN ACTIVE PLAYER COUNT */
 activeRef.on("value",snap=>{
-  activeEl.innerText="Active Players: "+snap.numChildren();
+  activeEl.innerText = "Active Players: "+snap.numChildren();
 });
 
-/* DATA */
+/* STOCK DATA */
 let cash=1000;
 const stocks={
   NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
@@ -132,22 +109,22 @@ startBtn.onclick=()=>{
   render();
 };
 
-/* PRICE UPDATE */
+/* UPDATE STOCK PRICES */
 setInterval(()=>{
   for(const s in stocks){
     let st=stocks[s];
     let change=(Math.random()-0.5)*0.05;
     st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
     st.history.push(st.price);
-    if(st.history.length>60)st.history.shift();
+    if(st.history.length>60) st.history.shift();
   }
   render();
 },2500);
 
-/* BUY / SELL */
+/* BUY / SELL FUNCTIONS */
 window.buy=function(sym){
   let amt=parseFloat(document.getElementById("buy-"+sym).value);
-  if(!amt||amt>cash)return;
+  if(!amt||amt>cash) return;
   let st=stocks[sym];
   let shares=amt/st.price;
   cash-=amt;
@@ -166,7 +143,7 @@ window.buyAll=function(sym){
 window.sell=function(sym){
   let qty=parseFloat(document.getElementById("sell-"+sym).value);
   let st=stocks[sym];
-  if(!qty||qty>st.shares)return;
+  if(!qty||qty>st.shares) return;
   st.shares-=qty;
   cash+=qty*st.price;
   render();
@@ -184,16 +161,16 @@ window.toggleGraph=function(sym){
   render();
 };
 
-/* DRAW GRAPH NEON */
+/* DRAW NEON GRAPH */
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym);
   let ctx=c.getContext("2d");
   let data=stocks[sym].history;
   ctx.clearRect(0,0,c.width,c.height);
-
   let min=Math.min(...data);
   let max=Math.max(...data);
 
+  // neon line
   ctx.lineWidth=2;
   ctx.shadowBlur=8;
   ctx.shadowColor="cyan";
@@ -206,7 +183,7 @@ function drawGraph(sym){
   });
   ctx.stroke();
 
-  // Buy price line
+  // buy price line
   if(stocks[sym].buyPrice){
     let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.shadowBlur=12;
@@ -218,19 +195,20 @@ function drawGraph(sym){
   }
 }
 
-/* RENDER */
+/* RENDER FUNCTION */
 function render(){
   cashEl.innerText=cash.toFixed(2);
   let total=cash;
-  for(const s in stocks)total+=stocks[s].shares*stocks[s].price;
+  for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
-  leaderboardRef.child(username).set({name:username,value:total});
+  // update leaderboard
+  leaderboardRef.child(sessionId).set({name:username,value:total});
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
     let pl=(st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
-    return`
+    return `
     <div class="stock">
       <strong>${s}</strong> — $${st.price}<br>
       Shares: ${st.shares.toFixed(3)} <span class="pl">PL: $${pl}</span><br><br>
@@ -249,16 +227,15 @@ function render(){
     </div>`;
   }).join("");
 
-  for(const s in stocks)if(stocks[s].show)drawGraph(s);
+  for(const s in stocks) if(stocks[s].show) drawGraph(s);
 }
 
-/* LEADERBOARD */
-leaderboardRef.on("value",snap=>{
+/* LEADERBOARD LISTENER */
+leaderboardRef.on("value", snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
-  arr.sort((a,b)=>b.value - a.value);
-  leaderboardEl.innerHTML = arr.slice(0,10)
-    .map(p => `<li>${p.name}: $${p.value.toFixed(2)}</li>`).join("");
+  arr.sort((a,b)=>b.value-b.value);
+  leaderboardEl.innerHTML=arr.slice(0,10).map(p=>`<li>${p.name}: $${p.value.toFixed(2)}</li>`).join("");
 });
 
 });
