@@ -11,74 +11,45 @@
 
 <style>
 html,body{
-  margin:0;
-  height:100%;
-  font-family:Arial,sans-serif;
-  color:white;
+  margin:0;height:100%;
+  font-family:Arial,sans-serif;color:white;
 }
-
-/* CENTER EVERYTHING */
 body{
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex;justify-content:center;align-items:center;
   background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
   background-size:600% 600%;
   animation:bg 18s ease infinite;
 }
-
 @keyframes bg{
   0%{background-position:0% 50%}
   50%{background-position:100% 50%}
   100%{background-position:0% 50%}
 }
-
 .container{
-  max-width:1000px;
-  width:100%;
+  max-width:1000px;width:100%;
   background:rgba(0,0,0,.45);
-  padding:20px;
-  border-radius:16px;
+  padding:20px;border-radius:16px;
 }
-
 h1{text-align:center;letter-spacing:4px}
-
-button{
-  padding:6px 12px;
-  border:none;
-  border-radius:6px;
-  font-weight:bold;
-  cursor:pointer;
-}
+button{padding:6px 12px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;}
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
-
 .stock{
-  margin-top:16px;
-  padding:14px;
+  margin-top:16px;padding:14px;
   background:rgba(255,255,255,.08);
-  border-radius:12px;
+  border-radius:12px
 }
-
-canvas{
-  width:100%;
-  height:140px;
-  margin-top:8px;
-  background:rgba(0,0,0,.3);
-  border-radius:8px;
-  display:none;
-}
-
+canvas{width:100%;height:140px;margin-top:8px;background:rgba(0,0,0,.3);border-radius:8px;display:none}
+input{width:80px;padding:4px;border-radius:4px;border:none}
 #active{text-align:center;margin-bottom:6px}
+.pl{color:cyan;font-weight:bold}
 </style>
 </head>
 
 <body>
 <div class="container">
 <h1>WESTOCKS</h1>
-
 <div id="active">Active Players: 0</div>
 
 <div id="start">
@@ -178,21 +149,34 @@ setInterval(()=>{
 /* BUY / SELL */
 window.buy=function(sym){
   let amt=parseFloat(document.getElementById("buy-"+sym).value);
-  if(isNaN(amt)||amt<=0||amt>cash)return;
+  if(!amt||amt>cash)return;
   let st=stocks[sym];
   let shares=amt/st.price;
   cash-=amt;
   st.shares+=shares;
-  st.buyPrice=st.price; // <-- BUY PRICE LINE
+  st.buyPrice=st.price;
   render();
 };
-
+window.buyAll=function(sym){
+  let st=stocks[sym];
+  let shares=cash/st.price;
+  st.shares+=shares;
+  st.buyPrice=st.price;
+  cash=0;
+  render();
+};
 window.sell=function(sym){
   let qty=parseFloat(document.getElementById("sell-"+sym).value);
   let st=stocks[sym];
-  if(isNaN(qty)||qty<=0||qty>st.shares)return;
+  if(!qty||qty>st.shares)return;
   st.shares-=qty;
   cash+=qty*st.price;
+  render();
+};
+window.sellAll=function(sym){
+  let st=stocks[sym];
+  cash+=st.shares*st.price;
+  st.shares=0;
   render();
 };
 
@@ -202,7 +186,7 @@ window.toggleGraph=function(sym){
   render();
 };
 
-/* DRAW GRAPH — ORIGINAL STYLE WITH BUY LINE */
+/* DRAW GRAPH NEON STYLE */
 function drawGraph(sym){
   let c=document.getElementById("g-"+sym);
   let ctx=c.getContext("2d");
@@ -212,7 +196,11 @@ function drawGraph(sym){
   let min=Math.min(...data);
   let max=Math.max(...data);
 
-  ctx.strokeStyle="white";
+  // Neon line effect
+  ctx.lineWidth=2;
+  ctx.shadowBlur=8;
+  ctx.shadowColor="cyan";
+  ctx.strokeStyle="cyan";
   ctx.beginPath();
   data.forEach((p,i)=>{
     let x=i/(data.length-1)*c.width;
@@ -221,9 +209,10 @@ function drawGraph(sym){
   });
   ctx.stroke();
 
-  // Draw buy price line
+  // Buy price line
   if(stocks[sym].buyPrice){
     let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
+    ctx.shadowBlur=12;
     ctx.strokeStyle="lime";
     ctx.beginPath();
     ctx.moveTo(0,y);
@@ -243,16 +232,20 @@ function render(){
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
+    let pl=(st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
     return`
     <div class="stock">
       <strong>${s}</strong> — $${st.price}<br>
-      Shares: ${st.shares.toFixed(3)}<br>
+      Shares: ${st.shares.toFixed(3)} 
+      <span class="pl">PL: $${pl}</span><br><br>
 
       Buy $ <input id="buy-${s}" type="number">
       <button class="buy" onclick="buy('${s}')">Buy</button>
+      <button class="buy" onclick="buyAll('${s}')">Buy All</button>
 
       Sell <input id="sell-${s}" type="number" step="0.01">
       <button class="sell" onclick="sell('${s}')">Sell</button>
+      <button class="sell" onclick="sellAll('${s}')">Sell All</button>
 
       <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
 
