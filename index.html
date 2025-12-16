@@ -32,16 +32,23 @@ body{
 }
 h1{text-align:center;letter-spacing:4px}
 button{
-  padding:8px 14px;border:none;
+  padding:6px 10px;border:none;
   border-radius:6px;font-weight:bold;
   cursor:pointer
 }
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
+.toggle{background:rgba(255,255,255,.2);color:white}
 .stock{
   margin-top:16px;padding:14px;
   background:rgba(255,255,255,.08);
   border-radius:12px
+}
+canvas{
+  width:100%;height:140px;
+  background:rgba(0,0,0,.3);
+  border-radius:8px;
+  margin-top:10px
 }
 input{width:80px;padding:4px;border-radius:4px;border:none}
 #active{text-align:center;margin-bottom:10px}
@@ -77,9 +84,9 @@ input{width:80px;padding:4px;border-radius:4px;border:none}
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded",()=>{
 
-/* 🔥 FIREBASE INIT */
+/* FIREBASE */
 firebase.initializeApp({
   apiKey: "AIzaSyDcgWQyY9QewcZ5v1QLC6rRD9AWfqicKgQ",
   authDomain: "westocks-5184b.firebaseapp.com",
@@ -92,26 +99,26 @@ firebase.initializeApp({
 const db = firebase.database();
 
 /* ELEMENTS */
-const startBtn = document.getElementById("startBtn");
-const start = document.getElementById("start");
-const game = document.getElementById("game");
-const cashEl = document.getElementById("cash");
-const totalEl = document.getElementById("total");
-const stocksEl = document.getElementById("stocks");
-const leaderboardEl = document.getElementById("leaderboard");
-const activeEl = document.getElementById("active");
+const startBtn=document.getElementById("startBtn");
+const start=document.getElementById("start");
+const game=document.getElementById("game");
+const cashEl=document.getElementById("cash");
+const totalEl=document.getElementById("total");
+const stocksEl=document.getElementById("stocks");
+const leaderboardEl=document.getElementById("leaderboard");
+const activeEl=document.getElementById("active");
 
 /* USERNAME */
-let username = localStorage.getItem("username");
+let username=localStorage.getItem("username");
 if(!username){
-  username = prompt("Choose a username") || "Guest"+Math.floor(Math.random()*1000);
-  localStorage.setItem("username", username);
+  username=prompt("Choose a username")||"Guest"+Math.floor(Math.random()*1000);
+  localStorage.setItem("username",username);
 }
 
 /* FIREBASE REFS */
-const playerId = Math.random().toString(36).slice(2);
-const activeRef = db.ref("activePlayers");
-const leaderRef = db.ref("leaderboard");
+const playerId=Math.random().toString(36).slice(2);
+const activeRef=db.ref("activePlayers");
+const leaderRef=db.ref("leaderboard");
 
 /* ACTIVE PLAYER */
 activeRef.child(playerId).set(true);
@@ -124,15 +131,15 @@ activeRef.on("value",s=>{
 });
 
 /* GAME DATA */
-let cash = 1000;
-const stocks = {
-  NOVA:{price:120,shares:0},
-  ORBX:{price:80,shares:0},
-  ZENT:{price:200,shares:0}
+let cash=1000;
+const stocks={
+  NOVA:{price:120,shares:0,history:[120],show:false},
+  ORBX:{price:80,shares:0,history:[80],show:false},
+  ZENT:{price:200,shares:0,history:[200],show:false}
 };
 
-/* START BUTTON */
-startBtn.onclick = () => {
+/* START */
+startBtn.onclick=()=>{
   start.style.display="none";
   game.style.display="block";
   render();
@@ -141,51 +148,86 @@ startBtn.onclick = () => {
 /* PRICE UPDATE */
 setInterval(()=>{
   for(const s in stocks){
-    stocks[s].price = +(stocks[s].price*(1+(Math.random()-0.5)*0.05)).toFixed(2);
+    let st=stocks[s];
+    st.price=Math.max(1,+(st.price*(1+(Math.random()-0.5)*0.05)).toFixed(2));
+    st.history.push(st.price);
+    if(st.history.length>80)st.history.shift();
   }
   render();
 },2500);
 
 /* BUY / SELL */
-function buy(sym){
-  let amt = +document.getElementById("buy-"+sym).value;
-  if(!amt || amt>cash) return;
-  let st = stocks[sym];
-  let shares = amt/st.price;
-  cash -= amt;
-  st.shares += shares;
+window.buy=function(sym){
+  let amt=+document.getElementById("buy-"+sym).value;
+  if(!amt||amt>cash)return;
+  let st=stocks[sym];
+  cash-=amt;
+  st.shares+=amt/st.price;
   render();
-}
-function sell(sym){
-  let qty = +document.getElementById("sell-"+sym).value;
-  let st = stocks[sym];
-  if(!qty || qty>st.shares) return;
-  st.shares -= qty;
-  cash += qty*st.price;
+};
+window.sell=function(sym){
+  let qty=+document.getElementById("sell-"+sym).value;
+  let st=stocks[sym];
+  if(!qty||qty>st.shares)return;
+  st.shares-=qty;
+  cash+=qty*st.price;
   render();
-}
+};
+
+/* TOGGLE GRAPH */
+window.toggleGraph=function(sym){
+  stocks[sym].show=!stocks[sym].show;
+  render();
+};
 
 /* RENDER */
 function render(){
-  cashEl.innerText = cash.toFixed(2);
-  let total = cash;
-  for(const s in stocks) total += stocks[s].shares*stocks[s].price;
-  totalEl.innerText = total.toFixed(2);
+  cashEl.innerText=cash.toFixed(2);
+  let total=cash;
+  for(const s in stocks)total+=stocks[s].shares*stocks[s].price;
+  totalEl.innerText=total.toFixed(2);
 
   leaderRef.child(playerId).set({name:username,value:total});
 
-  stocksEl.innerHTML = Object.keys(stocks).map(s=>{
+  stocksEl.innerHTML=Object.keys(stocks).map(s=>{
     let st=stocks[s];
-    return `
+    return`
     <div class="stock">
       <b>${s}</b> — $${st.price}<br>
       Shares: ${st.shares.toFixed(3)}<br><br>
+
       Buy $ <input id="buy-${s}" type="number">
       <button class="buy" onclick="buy('${s}')">Buy</button>
+
       Sell <input id="sell-${s}" type="number" step="0.01">
       <button class="sell" onclick="sell('${s}')">Sell</button>
+
+      <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
+
+      ${st.show?`<canvas id="g-${s}"></canvas>`:""}
     </div>`;
   }).join("");
+
+  for(const s in stocks)if(stocks[s].show)drawGraph(s);
+}
+
+/* DRAW GRAPH */
+function drawGraph(sym){
+  const c=document.getElementById("g-"+sym);
+  c.width=c.parentElement.clientWidth;
+  const ctx=c.getContext("2d");
+  const d=stocks[sym].history;
+  const min=Math.min(...d),max=Math.max(...d);
+
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.strokeStyle="white";
+  ctx.beginPath();
+  d.forEach((p,i)=>{
+    let x=i/(d.length-1)*c.width;
+    let y=c.height-(p-min)/(max-min+0.01)*c.height;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
 }
 
 /* LEADERBOARD */
@@ -193,7 +235,7 @@ leaderRef.on("value",snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
   arr.sort((a,b)=>b.value-a.value);
-  leaderboardEl.innerHTML = arr.slice(0,10).map(p=>
+  leaderboardEl.innerHTML=arr.slice(0,10).map(p=>
     `<li class="${p.name===username?'me':''}">
       ${p.name}: $${p.value.toFixed(2)}
     </li>`
@@ -202,5 +244,6 @@ leaderRef.on("value",snap=>{
 
 });
 </script>
+
 </body>
 </html>
