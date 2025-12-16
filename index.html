@@ -70,20 +70,20 @@ ol{padding-left:20px}
 
 <body>
 <div class="container">
-<h1>WESTOCKS</h1>
 
+<h1>WESTOCKS</h1>
 <div id="activeCount">Active Players: 0</div>
 
 <div id="start">
   <p style="text-align:center">Demo only — not real money</p>
   <div style="text-align:center">
-    <button class="buy" onclick="startGame()">Start Investing</button>
+    <button class="buy" id="startBtn">Start Investing</button>
   </div>
 </div>
 
 <div id="market" style="display:none">
   Cash: $<span id="cash">1000.00</span><br>
-  Portfolio: $<span id="portfolioValue">1000.00</span>
+  Portfolio: $<span id="portfolio">1000.00</span>
 
   <div class="stock">
     <strong>🏆 Leaderboard</strong>
@@ -93,9 +93,21 @@ ol{padding-left:20px}
   <div id="message"></div>
   <div id="stocks"></div>
 </div>
+
 </div>
 
 <script>
+/* ELEMENTS */
+const startScreen = document.getElementById("start");
+const market = document.getElementById("market");
+const cashEl = document.getElementById("cash");
+const portfolioEl = document.getElementById("portfolio");
+const stocksEl = document.getElementById("stocks");
+const msgEl = document.getElementById("message");
+const leaderboardEl = document.getElementById("leaderboard");
+const activeCountEl = document.getElementById("activeCount");
+const startBtn = document.getElementById("startBtn");
+
 /* USERNAME */
 let username = localStorage.getItem("username");
 if(!username){
@@ -115,103 +127,78 @@ window.addEventListener("beforeunload",()=>{
   leaderboardRef.child(playerId).remove();
 });
 playersRef.on("value",s=>{
-  activeCount.innerText="Active Players: "+s.numChildren();
+  activeCountEl.innerText = "Active Players: " + s.numChildren();
 });
 
-/* GAME DATA */
-let cash = +localStorage.getItem("cash") || 1000;
-const stocks={
-  NOVA:{price:120,shares:+localStorage.getItem("NOVA")||0,history:[120],show:false},
-  ORBX:{price:80,shares:+localStorage.getItem("ORBX")||0,history:[80],show:false},
-  ZENT:{price:200,shares:+localStorage.getItem("ZENT")||0,history:[200],show:false}
+/* DATA */
+let cash = 1000;
+const stocks = {
+  NOVA:{price:120,shares:0,history:[120],show:false},
+  ORBX:{price:80,shares:0,history:[80],show:false},
+  ZENT:{price:200,shares:0,history:[200],show:false}
 };
 
-/* START */
-function startGame(){
-  document.getElementById("start").style.display="none";
-  document.getElementById("market").style.display="block";
+/* START BUTTON — GUARANTEED */
+startBtn.addEventListener("click",()=>{
+  startScreen.style.display="none";
+  market.style.display="block";
   render();
-}
+});
 
-/* PRICE UPDATE */
+/* PRICE UPDATES */
 setInterval(()=>{
   for(const s in stocks){
     let st=stocks[s];
-    st.price=Math.max(1,+(st.price*(1+(Math.random()-0.5)*0.05)).toFixed(2));
+    st.price = Math.max(1, +(st.price*(1+(Math.random()-0.5)*0.05)).toFixed(2));
     st.history.push(st.price);
-    if(st.history.length>120)st.history.shift();
+    if(st.history.length>100) st.history.shift();
   }
   render();
 },2500);
 
 /* BUY / SELL */
 function buy(sym){
-  let amt=+document.getElementById("buy-"+sym).value;
-  if(!amt||amt<=0||amt>cash)return msg("Invalid buy");
+  let amt = Number(document.getElementById("buy-"+sym).value);
+  if(!amt || amt<=0 || amt>cash) return showMsg("Invalid buy");
   let st=stocks[sym];
   let shares=amt/st.price;
   cash-=amt; st.shares+=shares;
-  save(); render();
+  render();
 }
 function sell(sym){
-  let qty=+document.getElementById("sell-"+sym).value;
+  let qty = Number(document.getElementById("sell-"+sym).value);
   let st=stocks[sym];
-  if(!qty||qty<=0||qty>st.shares)return msg("Invalid sell");
+  if(!qty || qty<=0 || qty>st.shares) return showMsg("Invalid sell");
   st.shares-=qty; cash+=qty*st.price;
-  save(); render();
+  render();
 }
 
 /* RENDER */
 function render(){
-  cashSpan.innerText=cash.toFixed(2);
-  let total=cash;
-  for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
-  portfolioValue.innerText=total.toFixed(2);
+  cashEl.innerText = cash.toFixed(2);
 
-  leaderboardRef.child(playerId).set({
-    name:username,
-    value:total
-  });
+  let total = cash;
+  for(const s in stocks) total += stocks[s].shares*stocks[s].price;
+  portfolioEl.innerText = total.toFixed(2);
+
+  leaderboardRef.child(playerId).set({name:username,value:total});
 
   let html="";
   for(const s in stocks){
     let st=stocks[s];
-    let pl=st.shares*(st.price-st.history[0]);
     html+=`
     <div class="stock">
       <b>${s}</b> — $${st.price}<br>
-      Shares: ${st.shares.toFixed(3)}
-      <span class="${pl>=0?'profit':'loss'}">${st.shares?pl.toFixed(2):""}</span><br><br>
+      Shares: ${st.shares.toFixed(3)}<br><br>
 
       Buy $ <input id="buy-${s}" type="number">
       <button class="buy" onclick="buy('${s}')">Buy</button>
 
       Sell <input id="sell-${s}" type="number" step="0.01">
       <button class="sell" onclick="sell('${s}')">Sell</button>
-
-      <button class="toggle" onclick="stocks['${s}'].show=!stocks['${s}'].show;render()">Graph</button>
-      ${st.show?`<canvas id="g-${s}"></canvas>`:""}
     </div>`;
   }
-  stocksDiv.innerHTML=html;
-
-  for(const s in stocks) if(stocks[s].show) drawGraph(s);
-}
-
-/* GRAPH */
-function drawGraph(sym){
-  let c=document.getElementById("g-"+sym);
-  c.width=c.parentElement.clientWidth;
-  let ctx=c.getContext("2d"),d=stocks[sym].history;
-  let min=Math.min(...d),max=Math.max(...d);
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.strokeStyle="white";ctx.beginPath();
-  d.forEach((p,i)=>{
-    let x=i/(d.length-1)*c.width;
-    let y=c.height-(p-min)/(max-min+0.01)*c.height;
-    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
-  });
-  ctx.stroke();
+  stocksEl.innerHTML = html;
 }
 
 /* LEADERBOARD */
@@ -219,22 +206,20 @@ leaderboardRef.on("value",snap=>{
   let arr=[];
   snap.forEach(c=>arr.push(c.val()));
   arr.sort((a,b)=>b.value-a.value);
-  leaderboard.innerHTML=arr.slice(0,10).map((p,i)=>`
+  leaderboardEl.innerHTML = arr.slice(0,10).map((p,i)=>`
     <li class="${p.name===username?'me':''}">
       ${i==0?'🥇':i==1?'🥈':i==2?'🥉':''}
       ${p.name}: $${p.value.toFixed(2)}
-    </li>`).join("");
+    </li>
+  `).join("");
 });
 
-/* HELPERS */
-function save(){
-  localStorage.setItem("cash",cash);
-  for(const s in stocks)localStorage.setItem(s,stocks[s].shares);
-}
-function msg(t){
-  message.innerText=t;
-  setTimeout(()=>message.innerText="",1500);
+/* MESSAGE */
+function showMsg(t){
+  msgEl.innerText=t;
+  setTimeout(()=>msgEl.innerText="",1500);
 }
 </script>
+
 </body>
 </html>
