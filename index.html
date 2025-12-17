@@ -2,259 +2,162 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>WESTOCKS</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<title>Neon Tower Shooter – Full Gems & Upgrades Working</title>
 <style>
-html,body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  color:white;
-  background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
-  background-size:600% 600%;
-  animation:bg 18s ease infinite;
-  overflow-y:auto;
-}
-@keyframes bg{
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
-
-.container{
-  max-width:1000px;
-  width:95%;
-  margin:40px auto;
-  background:rgba(0,0,0,.45);
-  padding:24px;
-  border-radius:18px;
-}
-
-/* START SCREEN */
-#start{text-align:center}
-.logo{
-  font-size:52px;
-  letter-spacing:6px;
-  font-weight:bold;
-  color:#00faff;
-  text-shadow:0 0 10px #00faff,0 0 30px #00faff;
-  margin-bottom:20px;
-}
-.subtitle{opacity:.8;margin-bottom:30px}
-
-button{
-  padding:10px 18px;
-  border:none;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
-}
-.buy{background:white;color:black}
-.sell{background:#ffb3b3;color:black}
-.toggle{background:rgba(255,255,255,.2);color:white}
-
-#market{display:none}
-
-.stock{
-  margin-top:20px;
-  padding:16px;
-  background:rgba(255,255,255,.08);
-  border-radius:14px;
-}
-
-canvas{
-  width:100%;
-  height:140px;
-  margin-top:10px;
-  background:rgba(0,0,0,.35);
-  border-radius:10px;
-  display:none;
-}
-
-input{
-  width:90px;
-  padding:6px;
-  border-radius:6px;
-  border:none;
-}
-
-.pl{color:#00faff;font-weight:bold}
+html, body { margin:0; padding:0; overflow:hidden; background:#000; }
+canvas { display:block; }
+#ui { position:fixed; top:10px; left:10px; color:#0ff; font-family:Arial; z-index:5; pointer-events:none; }
+#bottomUI { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:5; }
+#bottomUI button { padding:12px 18px; background:#111; color:#0ff; border:1px solid #0ff; cursor:pointer; }
+#overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); color:#0ff; font-family:Arial; display:flex; align-items:center; justify-content:center; z-index:10; }
+.panel { border:2px solid #0ff; padding:20px; min-width:300px; text-align:center; }
+.panel button { margin:8px; padding:10px; background:#111; color:#0ff; border:1px solid #0ff; cursor:pointer; }
 </style>
 </head>
-
 <body>
-<div class="container">
-
-<!-- START SCREEN -->
-<div id="start">
-  <div class="logo">WESTOCKS</div>
-  <div class="subtitle">Demo trading simulator</div>
-  <button class="buy" id="startBtn">Start Investing</button>
+<div id="ui">
+  <div id="coins"></div>
+  <div id="hp"></div>
+  <div id="shield"></div>
+  <div id="gems"></div>
 </div>
-
-<!-- MARKET -->
-<div id="market">
-  Cash: $<span id="cash">5000.00</span><br>
-  Portfolio: $<span id="portfolio">5000.00</span>
-  <div id="stocks"></div>
+<div id="bottomUI">
+  <button id="dmgBtn">Damage +1 (5🪙)</button>
+  <button id="rateBtn">Fire Rate (5🪙)</button>
+  <button id="autoBtn">Auto Fire (15🪙)</button>
+  <button id="speedBtn">Move Speed (8🪙)</button>
+  <button id="pierceBtn">Pierce +1 (10🪙)</button>
+  <button id="healBtn">Heal +1 HP (6🪙)</button>
+  <button id="leftDroneBtn">Left Drone (20🪙)</button>
+  <button id="rightDroneBtn">Right Drone (20🪙)</button>
 </div>
-
+<canvas id="game"></canvas>
+<div id="overlay">
+  <div class="panel">
+    <h2>NEON TOWER</h2>
+    <p>Gems: <span id="metaGems"></span></p>
+    <button id="metaHp">+ Max HP (10💎)</button>
+    <button id="metaShield">+ Max Shield (10💎)</button>
+    <button id="metaDamage">+ Start Damage (15💎)</button>
+    <button id="metaSpeed">+ Start Speed (15💎)</button>
+    <button id="metaPierce">+ Start Pierce (20💎)</button>
+    <button id="metaRegen">+ HP Regen (25💎)</button>
+    <button id="metaMagnet">+ Coin Magnet (30💎)</button>
+    <button id="petGamble">🎰 Gamble Pet (25💎)</button>
+    <p id="petText"></p>
+    <hr>
+    <button id="startBtn">START RUN</button>
+  </div>
 </div>
-
 <script>
-let cash=5000;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}resize();addEventListener('resize',resize);
 
-const stocks={
-  NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
-  ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
-  ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
+let gems = Number(localStorage.getItem('gems')||0);
+let meta = { hp:0, shield:0, damage:0, speed:0, pierce:0, regen:0, magnet:0, pet:localStorage.getItem('pet')||null };
+let mouseX=0, mouseY=0;
+const keys={};
+canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mouseX=e.clientX-r.left;mouseY=e.clientY-r.top;});
+addEventListener('keydown',e=>keys[e.code]=true);
+addEventListener('keyup',e=>keys[e.code]=false);
+
+let bullets=[], enemies=[], particles=[];
+let coins=0, shootCooldown=false, gameOver=true, shake=0;
+let px=0, py=0, runTime=0;
+let player=null;
+
+function createSparks(x,y,color,count,speed=4){for(let i=0;i<count;i++){particles.push({x,y,vx:(Math.random()-0.5)*speed,vy:(Math.random()-0.5)*speed,life:Math.floor(Math.random()*20+10),color});}}
+
+function startGame(){
+  bullets=[]; enemies=[]; particles=[];
+  coins=0; runTime=0; shake=0;
+  px=canvas.width/2; py=canvas.height/2;
+  player={ angle:0, speed:4+meta.speed, fireDelay:450, damage:1+meta.damage, pierce:1+meta.pierce, maxHp:5+meta.hp, hp:5+meta.hp, maxShield:3+meta.shield, shield:3+meta.shield, auto:false, leftDrone:false, rightDrone:false };
+  if(meta.pet==='damage') player.damage*=1.1;
+  if(meta.pet==='speed') player.speed*=1.1;
+  if(meta.pet==='shield') player.maxShield+=1;
+  gameOver=false;
+  document.getElementById('overlay').style.display='none';
+}
+
+function refreshMeta(){ document.getElementById('metaGems').textContent=gems; }
+function saveMeta(){ localStorage.setItem('gems',gems); refreshMeta(); }
+refreshMeta();
+
+document.getElementById('startBtn').addEventListener('click',()=>{ startGame(); if(!window.gameLoopInitialized){ window.gameLoopInitialized=true; loop(); } });
+
+const upgradeCosts = { dmg:5, rate:5, auto:15, speed:8, pierce:10, heal:6, leftDrone:20, rightDrone:20 };
+document.getElementById('dmgBtn').onclick=()=>{if(coins>=upgradeCosts.dmg){coins-=upgradeCosts.dmg;player.damage++;}}
+document.getElementById('rateBtn').onclick=()=>{if(coins>=upgradeCosts.rate){coins-=upgradeCosts.rate;player.fireDelay=Math.max(50,player.fireDelay-50);}}
+document.getElementById('autoBtn').onclick=()=>{if(coins>=upgradeCosts.auto){coins-=upgradeCosts.auto;player.auto=true;}}
+document.getElementById('speedBtn').onclick=()=>{if(coins>=upgradeCosts.speed){coins-=upgradeCosts.speed;player.speed+=1;}}
+document.getElementById('pierceBtn').onclick=()=>{if(coins>=upgradeCosts.pierce){coins-=upgradeCosts.pierce;player.pierce+=1;}}
+document.getElementById('healBtn').onclick=()=>{if(coins>=upgradeCosts.heal){coins-=upgradeCosts.heal;player.hp=Math.min(player.hp+1,player.maxHp);}}
+document.getElementById('leftDroneBtn').onclick=()=>{if(coins>=upgradeCosts.leftDrone){coins-=upgradeCosts.leftDrone;player.leftDrone=true;}}
+document.getElementById('rightDroneBtn').onclick=()=>{if(coins>=upgradeCosts.rightDrone){coins-=upgradeCosts.rightDrone;player.rightDrone=true;}}
+
+// --- META-UPGRADE BUTTONS ---
+document.getElementById('metaHp').onclick = () => { if(gems>=10){ gems-=10; meta.hp++; saveMeta(); } };
+document.getElementById('metaShield').onclick = () => { if(gems>=10){ gems-=10; meta.shield++; saveMeta(); } };
+document.getElementById('metaDamage').onclick = () => { if(gems>=15){ gems-=15; meta.damage++; saveMeta(); } };
+document.getElementById('metaSpeed').onclick = () => { if(gems>=15){ gems-=15; meta.speed++; saveMeta(); } };
+document.getElementById('metaPierce').onclick = () => { if(gems>=20){ gems-=20; meta.pierce++; saveMeta(); } };
+document.getElementById('metaRegen').onclick = () => { if(gems>=25){ gems-=25; meta.regen++; saveMeta(); } };
+document.getElementById('metaMagnet').onclick = () => { if(gems>=30){ gems-=30; meta.magnet++; saveMeta(); } };
+document.getElementById('petGamble').onclick = () => {
+  if(gems>=25){
+    gems-=25;
+    const pets=['damage','speed','shield','none'];
+    meta.pet = pets[Math.floor(Math.random()*pets.length)];
+    localStorage.setItem('pet', meta.pet);
+    document.getElementById('petText').textContent = meta.pet==='none'?'No pet this time.':`You got ${meta.pet} pet!`;
+    saveMeta();
+  }
 };
 
-const startBtn=document.getElementById("startBtn");
-const start=document.getElementById("start");
-const market=document.getElementById("market");
-const cashEl=document.getElementById("cash");
-const portfolioEl=document.getElementById("portfolio");
-const stocksEl=document.getElementById("stocks");
+function shoot(ox=px, oy=py, dmg=player.damage, pierce=player.pierce){ bullets.push({x:ox,y:oy,angle:player.angle,speed:10,damage:dmg,pierce:pierce}); createSparks(ox,oy,'#0ff',6,5); }
 
-startBtn.onclick=()=>{
-  start.style.display="none";
-  market.style.display="block";
-  initMarket();
-  render();
-};
+function spawnEnemy(){ if(gameOver) return; const s=Math.floor(Math.random()*4); let x,y; if(s===0){x=0;y=Math.random()*canvas.height;} if(s===1){x=canvas.width;y=Math.random()*canvas.height;} if(s===2){x=Math.random()*canvas.width;y=0;} if(s===3){x=Math.random()*canvas.width;y=canvas.height;} const t=Math.random(); enemies.push(t<0.6?{x,y,hp:4,size:14,speed:1.6,type:'normal'}:t<0.85?{x,y,hp:9,size:20,speed:1,type:'tank'}:{x,y,hp:2,size:10,speed:3,type:'fast'}); }
+setInterval(spawnEnemy,900);
 
-/* ---------- INITIALIZE MARKET ---------- */
-function initMarket(){
-  stocksEl.innerHTML = Object.keys(stocks).map(s=>{
-    return `
-    <div class="stock" id="stock-${s}">
-      <strong>${s}</strong> — $<span class="price">0</span><br>
-      Shares: <span class="shares">0</span>
-      <span class="pl">PL: <span class="pl-val">0</span></span><br><br>
+function update(){
+  if(gameOver || !player) return;
+  runTime++;
+  if(keys.KeyW) py-=player.speed; if(keys.KeyS) py+=player.speed;
+  if(keys.KeyA) px-=player.speed; if(keys.KeyD) px+=player.speed;
+  px=Math.max(0, Math.min(canvas.width, px)); py=Math.max(0, Math.min(canvas.height, py));
+  player.angle=Math.atan2(mouseY-py, mouseX-px);
 
-      Buy $ <input class="buy-input" id="buy-${s}">
-      <button class="buy" onclick="buy('${s}')">Buy</button>
-      <button class="buy" onclick="buyAll('${s}')">Buy All</button><br><br>
+  if(player.auto && !shootCooldown){ shoot(px,py,player.damage,player.pierce); shootCooldown=true; setTimeout(()=>shootCooldown=false,player.fireDelay); }
+  if(keys.Space && !shootCooldown){ shoot(px,py,player.damage,player.pierce); shootCooldown=true; setTimeout(()=>shootCooldown=false,player.fireDelay); }
 
-      Sell shares <input class="sell-input" id="sell-${s}">
-      <button class="sell" onclick="sell('${s}')">Sell</button>
-      <button class="sell" onclick="sellAll('${s}')">Sell All</button><br><br>
+  if(player.leftDrone && runTime%15===0) shoot(px+Math.cos(player.angle-Math.PI/2)*22, py+Math.sin(player.angle-Math.PI/2)*22, Math.max(1,player.damage*0.5), 1);
+  if(player.rightDrone && runTime%35===0) shoot(px+Math.cos(player.angle+Math.PI/2)*22, py+Math.sin(player.angle+Math.PI/2)*22, player.damage*2, 2);
 
-      <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
-      <canvas id="g-${s}" width="800" height="140"></canvas>
-    </div>`;
-  }).join("");
-}
+  for(let i=bullets.length-1;i>=0;i--){ let b=bullets[i]; b.x+=Math.cos(b.angle)*b.speed; b.y+=Math.sin(b.angle)*b.speed; if(b.x<0||b.x>canvas.width||b.y<0||b.y>canvas.height) bullets.splice(i,1); }
 
-/* ---------- PRICE UPDATES ---------- */
-setInterval(()=>{
-  for(const s in stocks){
-    let st=stocks[s];
-    let ch=(Math.random()-0.5)*0.05;
-    st.price=Math.max(1,+(st.price*(1+ch)).toFixed(2));
-    st.history.push(st.price);
-    if(st.history.length>60) st.history.shift();
+  for(let i=enemies.length-1;i>=0;i--){
+    let e=enemies[i]; let dx=px-e.x, dy=py-e.y, d=Math.hypot(dx,dy); e.x+=dx/d*e.speed; e.y+=dy/d*e.speed;
+    if(d<e.size+14){ createSparks(px,py,'#f00',20,6); player.shield>0?player.shield--:player.hp--; enemies.splice(i,1); if(player.hp<=0){ gameOver=true; createSparks(px,py,'#f0f',50,8); gems+=Math.floor(runTime/600); saveMeta(); document.getElementById('overlay').style.display='flex'; } }
+    for(let j=bullets.length-1;j>=0;j--){ let b=bullets[j]; if(Math.hypot(e.x-b.x,e.y-b.y)<e.size){ e.hp-=b.damage; b.pierce--; createSparks(e.x,e.y,'#0ff',6,5); if(b.pierce<=0) bullets.splice(j,1); if(e.hp<=0){ coins++; gems++; saveMeta(); enemies.splice(i,1); createSparks(e.x,e.y,'#ff0',20,6); } } }
   }
-  render();
-},2500);
 
-/* ---------- ACTIONS ---------- */
-function buy(s){
-  let input=document.getElementById("buy-"+s);
-  let amt=parseFloat(input.value);
-  if(!amt||amt<=0||amt>cash) return;
-  let st=stocks[s];
-  cash-=amt;
-  st.shares+=amt/st.price;
-  st.buyPrice=st.price;
-  input.value="";
-  render();
-}
-function buyAll(s){
-  let st=stocks[s];
-  if(cash<=0) return;
-  st.shares+=cash/st.price;
-  st.buyPrice=st.price;
-  cash=0;
-  render();
-}
-function sell(s){
-  let input=document.getElementById("sell-"+s);
-  let qty=parseFloat(input.value);
-  let st=stocks[s];
-  if(!qty||qty<=0) return;
-  qty=Math.min(qty,st.shares);
-  st.shares-=qty;
-  cash+=qty*st.price;
-  input.value="";
-  render();
-}
-function sellAll(s){
-  let st=stocks[s];
-  if(st.shares<=0) return;
-  cash+=st.shares*st.price;
-  st.shares=0;
-  render();
-}
-function toggleGraph(s){
-  stocks[s].show=!stocks[s].show;
-  document.getElementById("g-"+s).style.display=stocks[s].show?"block":"none";
-  if(stocks[s].show) drawGraph(s);
+  document.getElementById('coins').textContent=`Coins: ${coins}`;
+  document.getElementById('hp').textContent=`HP: ${player.hp}/${player.maxHp}`;
+  document.getElementById('shield').textContent=`Shield: ${player.shield}/${player.maxShield}`;
+  document.getElementById('gems').textContent=`Gems: ${gems}`;
 }
 
-/* ---------- GRAPH ---------- */
-function drawGraph(s){
-  let c=document.getElementById("g-"+s);
-  let ctx=c.getContext("2d");
-  let d=stocks[s].history;
-  let min=Math.min(...d), max=Math.max(...d);
-
-  ctx.clearRect(0,0,c.width,c.height);
-
-  /* NEON PRICE */
-  ctx.strokeStyle="#00faff";
-  ctx.shadowBlur=15;
-  ctx.shadowColor="#00faff";
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  d.forEach((p,i)=>{
-    let x=i/(d.length-1)*c.width;
-    let y=c.height-(p-min)/(max-min+0.01)*c.height;
-    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
-  });
-  ctx.stroke();
-
-  /* BUY LINE */
-  let st=stocks[s];
-  if(st.buyPrice){
-    let y=c.height-(st.buyPrice-min)/(max-min+0.01)*c.height;
-    ctx.strokeStyle="lime";
-    ctx.shadowColor="lime";
-    ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(c.width,y);
-    ctx.stroke();
-  }
-  ctx.shadowBlur=0;
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(player){ ctx.save(); ctx.translate(px,py); ctx.rotate(player.angle); ctx.fillStyle='#0ff'; ctx.shadowBlur=15; ctx.shadowColor='#0ff'; ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-12,-12); ctx.lineTo(-6,0); ctx.lineTo(-12,12); ctx.closePath(); ctx.fill(); ctx.shadowBlur=0; ctx.restore(); }
+  bullets.forEach(b=>{ ctx.fillStyle='#ff0'; ctx.shadowBlur=10; ctx.shadowColor='#ff0'; ctx.fillRect(b.x-2,b.y-2,4,4); ctx.shadowBlur=0; });
+  enemies.forEach(e=>{ ctx.beginPath(); ctx.arc(e.x,e.y,e.size,0,Math.PI*2); ctx.strokeStyle=e.type==='tank'?'#0f0':e.type==='fast'?'#f00':'#f0f'; ctx.lineWidth=3; ctx.shadowBlur=15; ctx.shadowColor=ctx.strokeStyle; ctx.stroke(); ctx.shadowBlur=0; });
+  particles.forEach(p=>{ ctx.fillStyle=p.color; ctx.fillRect(p.x-2,p.y-2,4,4); p.x+=p.vx; p.y+=p.vy; p.life--; });
+  particles=particles.filter(p=>p.life>0);
 }
 
-/* ---------- RENDER ---------- */
-function render(){
-  cashEl.innerText=cash.toFixed(2);
-  let total=cash;
-  for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
-  portfolioEl.innerText=total.toFixed(2);
-
-  for(const s in stocks){
-    let st=stocks[s];
-    let stockDiv=document.getElementById("stock-"+s);
-    stockDiv.querySelector(".price").innerText=st.price.toFixed(2);
-    stockDiv.querySelector(".shares").innerText=st.shares.toFixed(3);
-    stockDiv.querySelector(".pl-val").innerText=(st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
-    if(st.show) drawGraph(s);
-  }
-}
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
 </script>
 </body>
-</html>
