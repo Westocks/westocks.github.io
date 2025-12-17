@@ -8,13 +8,8 @@
 <style>
 html,body{
   margin:0;
-  height:100%;
   font-family:Arial,sans-serif;
   color:white;
-}
-
-/* BACKGROUND */
-body{
   background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
   background-size:600% 600%;
   animation:bg 18s ease infinite;
@@ -35,7 +30,7 @@ body{
   border-radius:18px;
 }
 
-/* START */
+/* START SCREEN */
 #start{text-align:center}
 .logo{
   font-size:52px;
@@ -90,7 +85,7 @@ input{
 <body>
 <div class="container">
 
-<!-- START -->
+<!-- START SCREEN -->
 <div id="start">
   <div class="logo">WESTOCKS</div>
   <div class="subtitle">Demo trading simulator</div>
@@ -109,9 +104,6 @@ input{
 <script>
 let cash=1000;
 
-/* STORE INPUT VALUES */
-let buyInputs={}, sellInputs={};
-
 const stocks={
   NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
   ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
@@ -125,75 +117,93 @@ const cashEl=document.getElementById("cash");
 const portfolioEl=document.getElementById("portfolio");
 const stocksEl=document.getElementById("stocks");
 
-/* START */
 startBtn.onclick=()=>{
   start.style.display="none";
   market.style.display="block";
+  initMarket();
   render();
 };
 
-/* PRICE UPDATES */
+/* ---------- INITIALIZE MARKET ---------- */
+function initMarket(){
+  stocksEl.innerHTML = Object.keys(stocks).map(s=>{
+    return `
+    <div class="stock" id="stock-${s}">
+      <strong>${s}</strong> — $<span class="price">0</span><br>
+      Shares: <span class="shares">0</span>
+      <span class="pl">PL: <span class="pl-val">0</span></span><br><br>
+
+      Buy $ <input class="buy-input" id="buy-${s}">
+      <button class="buy" onclick="buy('${s}')">Buy</button>
+      <button class="buy" onclick="buyAll('${s}')">Buy All</button><br><br>
+
+      Sell shares <input class="sell-input" id="sell-${s}">
+      <button class="sell" onclick="sell('${s}')">Sell</button>
+      <button class="sell" onclick="sellAll('${s}')">Sell All</button><br><br>
+
+      <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
+      <canvas id="g-${s}" width="800" height="140"></canvas>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- PRICE UPDATES ---------- */
 setInterval(()=>{
   for(const s in stocks){
     let st=stocks[s];
     let ch=(Math.random()-0.5)*0.05;
     st.price=Math.max(1,+(st.price*(1+ch)).toFixed(2));
     st.history.push(st.price);
-    if(st.history.length>60)st.history.shift();
+    if(st.history.length>60) st.history.shift();
   }
   render();
 },2500);
 
-/* BUY */
+/* ---------- ACTIONS ---------- */
 function buy(s){
-  let amt=parseFloat(buyInputs[s]);
-  if(!amt||amt<=0||amt>cash)return;
+  let input=document.getElementById("buy-"+s);
+  let amt=parseFloat(input.value);
+  if(!amt||amt<=0||amt>cash) return;
   let st=stocks[s];
   cash-=amt;
   st.shares+=amt/st.price;
   st.buyPrice=st.price;
-  buyInputs[s]="";
+  input.value="";
   render();
 }
 function buyAll(s){
   let st=stocks[s];
-  if(cash<=0)return;
+  if(cash<=0) return;
   st.shares+=cash/st.price;
   st.buyPrice=st.price;
   cash=0;
   render();
 }
-
-/* SELL (FIXED) */
 function sell(s){
-  let qty=parseFloat(sellInputs[s]);
+  let input=document.getElementById("sell-"+s);
+  let qty=parseFloat(input.value);
   let st=stocks[s];
-
-  if(!qty || qty<=0) return;
-
-  /* Clamp to owned shares */
+  if(!qty||qty<=0) return;
   qty=Math.min(qty,st.shares);
-
   st.shares-=qty;
   cash+=qty*st.price;
-
-  sellInputs[s]="";
+  input.value="";
   render();
 }
 function sellAll(s){
   let st=stocks[s];
-  if(st.shares<=0)return;
+  if(st.shares<=0) return;
   cash+=st.shares*st.price;
   st.shares=0;
   render();
 }
-
 function toggleGraph(s){
   stocks[s].show=!stocks[s].show;
-  render();
+  document.getElementById("g-"+s).style.display=stocks[s].show?"block":"none";
+  if(stocks[s].show) drawGraph(s);
 }
 
-/* GRAPH */
+/* ---------- GRAPH ---------- */
 function drawGraph(s){
   let c=document.getElementById("g-"+s);
   let ctx=c.getContext("2d");
@@ -216,8 +226,9 @@ function drawGraph(s){
   ctx.stroke();
 
   /* BUY LINE */
-  if(stocks[s].buyPrice){
-    let y=c.height-(stocks[s].buyPrice-min)/(max-min+0.01)*c.height;
+  let st=stocks[s];
+  if(st.buyPrice){
+    let y=c.height-(st.buyPrice-min)/(max-min+0.01)*c.height;
     ctx.strokeStyle="lime";
     ctx.shadowColor="lime";
     ctx.beginPath();
@@ -228,40 +239,21 @@ function drawGraph(s){
   ctx.shadowBlur=0;
 }
 
-/* RENDER */
+/* ---------- RENDER ---------- */
 function render(){
   cashEl.innerText=cash.toFixed(2);
-
   let total=cash;
   for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
-  stocksEl.innerHTML=Object.keys(stocks).map(s=>{
+  for(const s in stocks){
     let st=stocks[s];
-    let pl=st.shares*(st.price-(st.buyPrice||st.price));
-    return `
-    <div class="stock">
-      <strong>${s}</strong> — $${st.price}<br>
-      Shares: ${st.shares.toFixed(3)}
-      <span class="pl"> PL: $${pl.toFixed(2)}</span><br><br>
-
-      Buy $ <input value="${buyInputs[s]||""}"
-        oninput="buyInputs['${s}']=this.value">
-      <button class="buy" onclick="buy('${s}')">Buy</button>
-      <button class="buy" onclick="buyAll('${s}')">Buy All</button><br><br>
-
-      Sell shares <input value="${sellInputs[s]||""}"
-        oninput="sellInputs['${s}']=this.value">
-      <button class="sell" onclick="sell('${s}')">Sell</button>
-      <button class="sell" onclick="sellAll('${s}')">Sell All</button><br><br>
-
-      <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
-      <canvas id="g-${s}" width="800" height="140"
-        style="display:${st.show?'block':'none'}"></canvas>
-    </div>`;
-  }).join("");
-
-  for(const s in stocks) if(stocks[s].show) drawGraph(s);
+    let stockDiv=document.getElementById("stock-"+s);
+    stockDiv.querySelector(".price").innerText=st.price.toFixed(2);
+    stockDiv.querySelector(".shares").innerText=st.shares.toFixed(3);
+    stockDiv.querySelector(".pl-val").innerText=(st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
+    if(st.show) drawGraph(s);
+  }
 }
 </script>
 </body>
