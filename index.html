@@ -35,10 +35,8 @@ body{
   border-radius:18px;
 }
 
-/* START SCREEN */
-#start{
-  text-align:center;
-}
+/* START */
+#start{text-align:center}
 .logo{
   font-size:52px;
   letter-spacing:6px;
@@ -127,6 +125,7 @@ const cashEl=document.getElementById("cash");
 const portfolioEl=document.getElementById("portfolio");
 const stocksEl=document.getElementById("stocks");
 
+/* START */
 startBtn.onclick=()=>{
   start.style.display="none";
   market.style.display="block";
@@ -145,10 +144,10 @@ setInterval(()=>{
   render();
 },2500);
 
-/* ACTIONS */
+/* BUY */
 function buy(s){
-  let amt=+buyInputs[s];
-  if(!amt||amt>cash)return;
+  let amt=parseFloat(buyInputs[s]);
+  if(!amt||amt<=0||amt>cash)return;
   let st=stocks[s];
   cash-=amt;
   st.shares+=amt/st.price;
@@ -158,26 +157,37 @@ function buy(s){
 }
 function buyAll(s){
   let st=stocks[s];
+  if(cash<=0)return;
   st.shares+=cash/st.price;
   st.buyPrice=st.price;
   cash=0;
   render();
 }
+
+/* SELL (FIXED) */
 function sell(s){
-  let qty=+sellInputs[s];
+  let qty=parseFloat(sellInputs[s]);
   let st=stocks[s];
-  if(!qty||qty>st.shares)return;
+
+  if(!qty || qty<=0) return;
+
+  /* Clamp to owned shares */
+  qty=Math.min(qty,st.shares);
+
   st.shares-=qty;
   cash+=qty*st.price;
+
   sellInputs[s]="";
   render();
 }
 function sellAll(s){
   let st=stocks[s];
+  if(st.shares<=0)return;
   cash+=st.shares*st.price;
   st.shares=0;
   render();
 }
+
 function toggleGraph(s){
   stocks[s].show=!stocks[s].show;
   render();
@@ -191,9 +201,12 @@ function drawGraph(s){
   let min=Math.min(...d), max=Math.max(...d);
 
   ctx.clearRect(0,0,c.width,c.height);
+
+  /* NEON PRICE */
   ctx.strokeStyle="#00faff";
   ctx.shadowBlur=15;
   ctx.shadowColor="#00faff";
+  ctx.lineWidth=2;
   ctx.beginPath();
   d.forEach((p,i)=>{
     let x=i/(d.length-1)*c.width;
@@ -202,6 +215,7 @@ function drawGraph(s){
   });
   ctx.stroke();
 
+  /* BUY LINE */
   if(stocks[s].buyPrice){
     let y=c.height-(stocks[s].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.strokeStyle="lime";
@@ -236,7 +250,7 @@ function render(){
       <button class="buy" onclick="buy('${s}')">Buy</button>
       <button class="buy" onclick="buyAll('${s}')">Buy All</button><br><br>
 
-      Sell <input value="${sellInputs[s]||""}"
+      Sell shares <input value="${sellInputs[s]||""}"
         oninput="sellInputs['${s}']=this.value">
       <button class="sell" onclick="sell('${s}')">Sell</button>
       <button class="sell" onclick="sellAll('${s}')">Sell All</button><br><br>
