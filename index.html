@@ -15,12 +15,10 @@ html,body{
 
 /* BACKGROUND */
 body{
-  display:flex;
-  align-items:center;
-  justify-content:center;
   background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
   background-size:600% 600%;
   animation:bg 18s ease infinite;
+  overflow-y:auto;
 }
 @keyframes bg{
   0%{background-position:0% 50%}
@@ -30,7 +28,8 @@ body{
 
 .container{
   max-width:1000px;
-  width:100%;
+  width:95%;
+  margin:40px auto;
   background:rgba(0,0,0,.45);
   padding:24px;
   border-radius:18px;
@@ -45,16 +44,10 @@ body{
   letter-spacing:6px;
   font-weight:bold;
   color:#00faff;
-  text-shadow:
-    0 0 10px #00faff,
-    0 0 20px #00faff,
-    0 0 40px #00faff;
+  text-shadow:0 0 10px #00faff,0 0 30px #00faff;
   margin-bottom:20px;
 }
-.subtitle{
-  opacity:.8;
-  margin-bottom:30px;
-}
+.subtitle{opacity:.8;margin-bottom:30px}
 
 button{
   padding:10px 18px;
@@ -70,8 +63,8 @@ button{
 #market{display:none}
 
 .stock{
-  margin-top:16px;
-  padding:14px;
+  margin-top:20px;
+  padding:16px;
   background:rgba(255,255,255,.08);
   border-radius:14px;
 }
@@ -86,23 +79,20 @@ canvas{
 }
 
 input{
-  width:80px;
-  padding:4px;
-  border-radius:4px;
+  width:90px;
+  padding:6px;
+  border-radius:6px;
   border:none;
 }
 
-.pl{
-  color:#00faff;
-  font-weight:bold;
-}
+.pl{color:#00faff;font-weight:bold}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="start">
   <div class="logo">WESTOCKS</div>
   <div class="subtitle">Demo trading simulator</div>
@@ -119,10 +109,12 @@ input{
 </div>
 
 <script>
-/* ---------- GAME STATE ---------- */
-let cash = 1000;
+let cash=1000;
 
-const stocks = {
+/* STORE INPUT VALUES */
+let buyInputs={}, sellInputs={};
+
+const stocks={
   NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
   ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
   ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
@@ -135,87 +127,83 @@ const cashEl=document.getElementById("cash");
 const portfolioEl=document.getElementById("portfolio");
 const stocksEl=document.getElementById("stocks");
 
-/* ---------- START ---------- */
 startBtn.onclick=()=>{
   start.style.display="none";
   market.style.display="block";
   render();
 };
 
-/* ---------- PRICE UPDATES ---------- */
+/* PRICE UPDATES */
 setInterval(()=>{
   for(const s in stocks){
     let st=stocks[s];
-    let change=(Math.random()-0.5)*0.05;
-    st.price=Math.max(1,+(st.price*(1+change)).toFixed(2));
+    let ch=(Math.random()-0.5)*0.05;
+    st.price=Math.max(1,+(st.price*(1+ch)).toFixed(2));
     st.history.push(st.price);
     if(st.history.length>60)st.history.shift();
   }
   render();
 },2500);
 
-/* ---------- TRADING ---------- */
-function buy(sym){
-  let amt=+document.getElementById("buy-"+sym).value;
+/* ACTIONS */
+function buy(s){
+  let amt=+buyInputs[s];
   if(!amt||amt>cash)return;
-  let st=stocks[sym];
+  let st=stocks[s];
   cash-=amt;
   st.shares+=amt/st.price;
   st.buyPrice=st.price;
+  buyInputs[s]="";
   render();
 }
-function buyAll(sym){
-  let st=stocks[sym];
+function buyAll(s){
+  let st=stocks[s];
   st.shares+=cash/st.price;
   st.buyPrice=st.price;
   cash=0;
   render();
 }
-function sell(sym){
-  let qty=+document.getElementById("sell-"+sym).value;
-  let st=stocks[sym];
+function sell(s){
+  let qty=+sellInputs[s];
+  let st=stocks[s];
   if(!qty||qty>st.shares)return;
   st.shares-=qty;
   cash+=qty*st.price;
+  sellInputs[s]="";
   render();
 }
-function sellAll(sym){
-  let st=stocks[sym];
+function sellAll(s){
+  let st=stocks[s];
   cash+=st.shares*st.price;
   st.shares=0;
   render();
 }
-function toggleGraph(sym){
-  stocks[sym].show=!stocks[sym].show;
+function toggleGraph(s){
+  stocks[s].show=!stocks[s].show;
   render();
 }
 
-/* ---------- GRAPH ---------- */
-function drawGraph(sym){
-  let c=document.getElementById("g-"+sym);
+/* GRAPH */
+function drawGraph(s){
+  let c=document.getElementById("g-"+s);
   let ctx=c.getContext("2d");
-  let data=stocks[sym].history;
-  let min=Math.min(...data);
-  let max=Math.max(...data);
+  let d=stocks[s].history;
+  let min=Math.min(...d), max=Math.max(...d);
 
   ctx.clearRect(0,0,c.width,c.height);
-
-  /* NEON PRICE LINE */
   ctx.strokeStyle="#00faff";
   ctx.shadowBlur=15;
   ctx.shadowColor="#00faff";
-  ctx.lineWidth=2;
   ctx.beginPath();
-  data.forEach((p,i)=>{
-    let x=i/(data.length-1)*c.width;
+  d.forEach((p,i)=>{
+    let x=i/(d.length-1)*c.width;
     let y=c.height-(p-min)/(max-min+0.01)*c.height;
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
 
-  /* BUY PRICE LINE */
-  if(stocks[sym].buyPrice){
-    let y=c.height-(stocks[sym].buyPrice-min)/(max-min+0.01)*c.height;
+  if(stocks[s].buyPrice){
+    let y=c.height-(stocks[s].buyPrice-min)/(max-min+0.01)*c.height;
     ctx.strokeStyle="lime";
     ctx.shadowColor="lime";
     ctx.beginPath();
@@ -223,18 +211,15 @@ function drawGraph(sym){
     ctx.lineTo(c.width,y);
     ctx.stroke();
   }
-
   ctx.shadowBlur=0;
 }
 
-/* ---------- RENDER ---------- */
+/* RENDER */
 function render(){
   cashEl.innerText=cash.toFixed(2);
 
   let total=cash;
-  for(const s in stocks){
-    total+=stocks[s].shares*stocks[s].price;
-  }
+  for(const s in stocks) total+=stocks[s].shares*stocks[s].price;
   portfolioEl.innerText=total.toFixed(2);
 
   stocksEl.innerHTML=Object.keys(stocks).map(s=>{
@@ -246,11 +231,13 @@ function render(){
       Shares: ${st.shares.toFixed(3)}
       <span class="pl"> PL: $${pl.toFixed(2)}</span><br><br>
 
-      Buy $ <input id="buy-${s}">
+      Buy $ <input value="${buyInputs[s]||""}"
+        oninput="buyInputs['${s}']=this.value">
       <button class="buy" onclick="buy('${s}')">Buy</button>
       <button class="buy" onclick="buyAll('${s}')">Buy All</button><br><br>
 
-      Sell <input id="sell-${s}">
+      Sell <input value="${sellInputs[s]||""}"
+        oninput="sellInputs['${s}']=this.value">
       <button class="sell" onclick="sell('${s}')">Sell</button>
       <button class="sell" onclick="sellAll('${s}')">Sell All</button><br><br>
 
@@ -260,9 +247,7 @@ function render(){
     </div>`;
   }).join("");
 
-  for(const s in stocks){
-    if(stocks[s].show) drawGraph(s);
-  }
+  for(const s in stocks) if(stocks[s].show) drawGraph(s);
 }
 </script>
 </body>
