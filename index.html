@@ -20,7 +20,6 @@ html,body{
   50%{background-position:100% 50%}
   100%{background-position:0% 50%}
 }
-
 .container{
   max-width:1000px;
   width:95%;
@@ -29,8 +28,6 @@ html,body{
   padding:24px;
   border-radius:18px;
 }
-
-/* START SCREEN */
 #start{text-align:center}
 .logo{
   font-size:52px;
@@ -41,7 +38,6 @@ html,body{
   margin-bottom:20px;
 }
 .subtitle{opacity:.8;margin-bottom:30px}
-
 button{
   padding:10px 18px;
   border:none;
@@ -52,16 +48,13 @@ button{
 .buy{background:white;color:black}
 .sell{background:#ffb3b3;color:black}
 .toggle{background:rgba(255,255,255,.2);color:white}
-
 #market{display:none}
-
 .stock{
   margin-top:20px;
   padding:16px;
   background:rgba(255,255,255,.08);
   border-radius:14px;
 }
-
 canvas{
   width:100%;
   height:140px;
@@ -70,14 +63,12 @@ canvas{
   border-radius:10px;
   display:none;
 }
-
 input{
   width:90px;
   padding:6px;
   border-radius:6px;
   border:none;
 }
-
 .pl{color:#00faff;font-weight:bold}
 </style>
 </head>
@@ -85,14 +76,12 @@ input{
 <body>
 <div class="container">
 
-<!-- START SCREEN -->
 <div id="start">
   <div class="logo">WESTOCKS</div>
   <div class="subtitle">Demo trading simulator</div>
   <button class="buy" id="startBtn">Start Investing</button>
 </div>
 
-<!-- MARKET -->
 <div id="market">
   Cash: $<span id="cash">5000.00</span><br>
   Portfolio: $<span id="portfolio">5000.00</span>
@@ -102,14 +91,21 @@ input{
 </div>
 
 <script>
-let cash=5000;
+/* ================= CONFIG ================= */
+const API_KEY = "X0UMVSKM6J0LQ600";
+const AAPL_URL =
+  `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=AAPL&apikey=${API_KEY}`;
 
-const stocks={
-  NOVA:{price:120,shares:0,history:[120],buyPrice:null,show:false},
+/* ================= STATE ================= */
+let cash = 5000;
+
+const stocks = {
+  AAPL:{price:0,shares:0,history:[],buyPrice:null,show:false},
   ORBX:{price:80,shares:0,history:[80],buyPrice:null,show:false},
   ZENT:{price:200,shares:0,history:[200],buyPrice:null,show:false}
 };
 
+/* ================= UI ================= */
 const startBtn=document.getElementById("startBtn");
 const start=document.getElementById("start");
 const market=document.getElementById("market");
@@ -124,10 +120,9 @@ startBtn.onclick=()=>{
   render();
 };
 
-/* ---------- INITIALIZE MARKET ---------- */
+/* ================= MARKET INIT ================= */
 function initMarket(){
-  stocksEl.innerHTML = Object.keys(stocks).map(s=>{
-    return `
+  stocksEl.innerHTML = Object.keys(stocks).map(s=>`
     <div class="stock" id="stock-${s}">
       <strong>${s}</strong> — $<span class="price">0</span><br>
       Shares: <span class="shares">0</span>
@@ -143,32 +138,41 @@ function initMarket(){
 
       <button class="toggle" onclick="toggleGraph('${s}')">Graph</button>
       <canvas id="g-${s}" width="800" height="140"></canvas>
-    </div>`;
-  }).join("");
+    </div>
+  `).join("");
 }
 
-/* ---------- PRICE UPDATES ---------- */
-setInterval(()=>{
-  for(const s in stocks){
-    let st=stocks[s];
-    let ch=(Math.random()-0.5)*0.05;
-    st.price=Math.max(1,+(st.price*(1+ch)).toFixed(2));
-    st.history.push(st.price);
-    if(st.history.length>60) st.history.shift();
-  }
-  render();
-},2500);
+/* ================= REAL AAPL DATA ================= */
+async function updateApplePrice(){
+  try{
+    const res = await fetch(AAPL_URL);
+    const data = await res.json();
+    const price = parseFloat(data["Global Quote"]["05. price"]);
 
-/* ---------- ACTIONS ---------- */
+    if(!isNaN(price)){
+      let st = stocks.AAPL;
+      st.price = price;
+      st.history.push(price);
+      if(st.history.length > 60) st.history.shift();
+      render();
+    }
+  }catch(e){
+    console.error("AAPL fetch failed", e);
+  }
+}
+
+/* Update every 60 seconds */
+updateApplePrice();
+setInterval(updateApplePrice, 60000);
+
+/* ================= ACTIONS ================= */
 function buy(s){
-  let input=document.getElementById("buy-"+s);
-  let amt=parseFloat(input.value);
+  let amt=parseFloat(document.getElementById("buy-"+s).value);
   if(!amt||amt<=0||amt>cash) return;
   let st=stocks[s];
   cash-=amt;
   st.shares+=amt/st.price;
   st.buyPrice=st.price;
-  input.value="";
   render();
 }
 function buyAll(s){
@@ -180,19 +184,16 @@ function buyAll(s){
   render();
 }
 function sell(s){
-  let input=document.getElementById("sell-"+s);
-  let qty=parseFloat(input.value);
+  let qty=parseFloat(document.getElementById("sell-"+s).value);
   let st=stocks[s];
   if(!qty||qty<=0) return;
   qty=Math.min(qty,st.shares);
   st.shares-=qty;
   cash+=qty*st.price;
-  input.value="";
   render();
 }
 function sellAll(s){
   let st=stocks[s];
-  if(st.shares<=0) return;
   cash+=st.shares*st.price;
   st.shares=0;
   render();
@@ -203,19 +204,17 @@ function toggleGraph(s){
   if(stocks[s].show) drawGraph(s);
 }
 
-/* ---------- GRAPH ---------- */
+/* ================= GRAPH ================= */
 function drawGraph(s){
   let c=document.getElementById("g-"+s);
   let ctx=c.getContext("2d");
   let d=stocks[s].history;
-  let min=Math.min(...d), max=Math.max(...d);
+  if(d.length<2) return;
 
+  let min=Math.min(...d), max=Math.max(...d);
   ctx.clearRect(0,0,c.width,c.height);
 
-  /* NEON PRICE */
   ctx.strokeStyle="#00faff";
-  ctx.shadowBlur=15;
-  ctx.shadowColor="#00faff";
   ctx.lineWidth=2;
   ctx.beginPath();
   d.forEach((p,i)=>{
@@ -224,22 +223,9 @@ function drawGraph(s){
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
-
-  /* BUY LINE */
-  let st=stocks[s];
-  if(st.buyPrice){
-    let y=c.height-(st.buyPrice-min)/(max-min+0.01)*c.height;
-    ctx.strokeStyle="lime";
-    ctx.shadowColor="lime";
-    ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(c.width,y);
-    ctx.stroke();
-  }
-  ctx.shadowBlur=0;
 }
 
-/* ---------- RENDER ---------- */
+/* ================= RENDER ================= */
 function render(){
   cashEl.innerText=cash.toFixed(2);
   let total=cash;
@@ -248,10 +234,11 @@ function render(){
 
   for(const s in stocks){
     let st=stocks[s];
-    let stockDiv=document.getElementById("stock-"+s);
-    stockDiv.querySelector(".price").innerText=st.price.toFixed(2);
-    stockDiv.querySelector(".shares").innerText=st.shares.toFixed(3);
-    stockDiv.querySelector(".pl-val").innerText=(st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
+    let div=document.getElementById("stock-"+s);
+    div.querySelector(".price").innerText=st.price.toFixed(2);
+    div.querySelector(".shares").innerText=st.shares.toFixed(3);
+    div.querySelector(".pl-val").innerText=
+      (st.shares*(st.price-(st.buyPrice||st.price))).toFixed(2);
     if(st.show) drawGraph(s);
   }
 }
